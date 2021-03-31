@@ -1,0 +1,73 @@
+#!/bin/bash
+alias la="ls -al"
+alias anni="cd ~/Scrivania/materie/Anni"
+alias anno="cd ~/Scrivania/IV_Anno"
+alias ise="cd ~/Scrivania/IV_Anno/Integrazione_di_sistemi_embedded/Laboratori"
+alias scriptbash="cd /media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/"
+alias c-='echo $PWD >> ~/.aliases_pwd_swap; cd ../; ls'
+alias c--='cd ../../; ls'
+alias c3-='cd ../../../'
+alias c4-='cd ../../../../'
+alias c5-='cd ../../../../../'
+alias new_alias="vim ~/.bash_aliases"
+alias nanoic="nano -i -c"
+alias scri="cd ~/Scrivania"
+alias usrbin="cd /usr/bin"
+alias polito="firefox --new-tab https://idp.polito.it/idp/x509mixed-login"
+alias c+='if [[ `wc -l ~/.aliases_pwd_swap | cut -d " " -f 1` -ne 0 ]];\
+then cd `tail -n 1 ~/.aliases_pwd_swap`;\
+head -n -1 ~/.aliases_pwd_swap > ~/.alias_swap;\
+cat ~/.alias_swap > ~/.aliases_pwd_swap;\
+else echo "empty stack of directory"; fi; ls'
+
+alias hk='cd ~/Scrivania/materie/HHK'
+alias hsdft='cd ~/Scrivania/healt_Shirt/Battito_Cardiaco/C/DFT'
+alias grepc='grep --color'
+alias Prog='cd ~/Scrivania/Progetti_work'
+alias pyprog='cd ~/Scrivania/Progetti_work/Anni/I_Magistrale/ISE/python'
+
+alias setlinux='echo $PWD >> ~/.aliases_pwd_swap; \
+cd /home/tesla/Scrivania/Progetti/My_code_project/setlinux;\
+./setlinux.sh ;\
+cd `tail -n 1 ~/.aliases_pwd_swap`;\
+head -n -1 ~/.aliases_pwd_swap > ~/.alias_swap;\
+cat ~/.alias_swap > ~/.aliases_pwd_swap;'
+
+alias progetti="cd /home/tesla/Scrivania/Progetti"
+alias isa="cd /home/tesla/Scrivania/Progetti/Anno_V/ISA"
+alias gitguide="man /home/tesla/Progetti/Appunti/shell_program/git_guide.txt"
+alias gitguide_modify="vim /home/tesla/Scrivania/Progetti/Appunti/shell_program/git_guide.txt"
+alias appunti="cd /home/tesla/Progetti/Appunti"
+alias fixntfs="sudo ntfsfix /dev/sda9"
+alias auto_vsim="/media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/modelsim_script/auto_vsim.sh"
+alias man_auto_vsim="man /media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/man/auto_vsim"
+alias ntc="/media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/lib/ntc.sh"
+alias man_ntc="man /media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/man/ntc"
+alias pow_process="/media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/lib/sepf.sh"
+alias man_pow_process="man /media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/man/pow_process"
+alias sepf="/media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/lib/sepf.sh"
+alias man_sepf="man /media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/man/sepf"
+alias CC="cd /home/tesla/Progetti/My_code_project/CyberChallenge/CTF; ls"
+alias HCS="cd /home/tesla/Progetti/H-cube/Economia/statistiche"
+alias hk="cd /home/tesla/Scrivania/Progetti/My_code_project/pgts/hk"
+alias ghidra="/home/tesla/Progetti/My_code_project/my_prog/pgts/hk/usr/ghidra/ghidra_9.1.2_PUBLIC/ghidraRun"
+alias mountnas="sudo mount -t cifs -o username=elia,password=1996,vers=1.0 //192.168.178.1/FRITZ.NAS /mnt/archive"
+alias lib_help_extract="grep \"^[a-z]*\> [a-zA-Z_]*([[:alnum:][:print:]]*){\|^ \*.*$\|^\/\*.*$\" | awk '{if ($0 ~ /^ \*.*$/ || $0 ~ /^\/\*.*$/) print \"\t\"$0 ; else print $0}'"
+alias narnia="cd /home/tesla/Progetti/My_code_project/CyberChallenge/wargames/narnia"
+alias protostack="cd /home/tesla/Scrivania/Progetti/My_code_project/ArtOfHack/protostar"
+alias framartino="altool -n DO4,RE4,MI4,DO4,DO4,RE4,MI4,DO4,MI4,FA4,SOL4 -p 0.01,0.01,0.01,0.03,0.01,0.01,0.01,0.03,0.01,0.01,0.01 -t 0.15"
+alias sup="myalarm $((30*60)) $((5*60)) &"
+alias stop_sup="pkill -9 sup"
+alias ovflen="/media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/mypwn/ovflen.py"
+alias man_ovflen="man /media/tesla/Storage/Linux/Scrivania/Progetti/My_code_project/bash_script/man/ovflen"
+alias ams="echo -e 'Following program are installed with manpage\nthat could be read adding man_ prefix to commands:  \n		auto_vsim \n		ntc \n		ovflen \n		pow_process \n		sepf \n ' "
+alias cc_up="sudo wg-quick up /home/tesla/ff/profile.conf"
+alias cc_down="sudo wg-quick down /home/tesla/ff/profile.conf"
+alias os="cd ~/Desktop/Progetti/Anno_V/OS/"
+alias exam="cd ~/Desktop/Progetti/Anno_V/OS/exam" 
+alias tesi="cd ~/Desktop/Progetti/Tesi/RISKV_FT_Docs" 
+alias core="cd ~/Desktop/Progetti/Tesi/cv32e40p/rtl" 
+alias project="cd /media/tesla/Storage/Data/Scrivania/AllProject"
+alias project_cantina="cd /media/tesla/Storage/Data/Scrivania/AllProject/Fare/Progetti_Miei"
+alias project_verif="cd /media/tesla/Storage/Data/Scrivania/AllProject/Fare/Tesi/Esecuzione_tesi/core-v-verif/cv32/sim/core"
+alias send_core_data="scp -P 10038 ./* elia.ribaldone@led-x3850-2.polito.it:/home/elia.ribaldone/Desktop/prova/"
