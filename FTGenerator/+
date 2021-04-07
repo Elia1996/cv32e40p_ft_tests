@@ -1,0 +1,428 @@
+#!/usr/bin/python3
+from __future__ import absolute_import
+from __future__ import print_function
+import sys
+import os
+import collections
+
+
+from veriloggen import *
+
+from block_info import *
+
+import re
+
+def RemoveComments(string):
+    # remove all occurrences streamed comments (/*COMMENT */) from string
+    string = re.sub(re.compile("/\*.*?\*/",re.DOTALL ) ,"" ,string)
+    # remove all occurrence single-line comments (//COMMENT\n ) from string
+    string = re.sub(re.compile("//.*?\n" ) ,"" ,string)
+    return string
+
+def GetBits(string):
+    ####################################################################################
+    # Find bits from a sv init string
+    ####################################################################################
+    if "[" in string:
+        lista = string.split(":")
+        if len(lista) == 2:
+            return [int(lista[0].split("[")[-1])+1]
+        elif len(lista) == 3:
+            return [int(lista[0].split("[")[-1])+1, int(lista[1].split("[")[-1])+1]
+        else:
+            exit(-1)
+    else:
+        return [1]
+
+def GetModuleInfo(filename):
+    ####################################################################################
+    # Find info about a sv file
+    ####################################################################################
+    fp = open(filename, "r")
+
+    sig_input_name = []
+    sig_input_bits = []
+    sig_output_name = []
+    sig_output_bits = []
+    mod_patt="^module "
+    parameter_name = []
+    parameter_bits = []
+    parameter_value = []
+
+    for line in fp.readlines():
+        if (" input " in line) or (" output " in line):
+            line = RemoveComments(line)
+            real_line = " ".join(line.split()).replace(',','')
+
+        if " input " in line:
+            sig_input_name.append(real_line.split()[-1])
+            sig_input_bits.append(GetBits(line))
+       
+        if " output " in line:
+            sig_output_name.append(real_line.split()[-1])
+            sig_output_bits.append(GetBits(line))
+        if re.match(mod_patt,line):
+            module = line.split(" ")[1].strip()
+
+        if re.match("^.*parameter.*[,)\n]", line):
+            real_line=line.strip()
+            real_line=real_line.replace(",","").strip()
+            l1=real_line.split("=")
+            l=l1[0].strip().split(" ")
+            parameter_name.append(l[-1])
+            if "[" in l[-1] :
+                print("not implemented!!")
+                exit(-1)
+            else:
+                parameter_bits.append(1)
+            parameter_value.append(l1[1].strip())
+
+
+
+    return {"module":module,"parameter_value":parameter_value, "parameter_name":parameter_name, "parameter_bits":parameter_bits, "sig_input_name" : sig_input_name , "sig_input_bits":sig_input_bits, "sig_output_name":sig_output_name, "sig_output_bits":sig_output_bits }
+
+
+def GetVoterInstance(model_data, sig_name, voter_name, param_name, index, data_bit_number, indent):    
+    ####################################################################################
+    # Starting from a verilog code with some variable this function return
+    # a new code with variable substituted.
+    # SIGNAME -> name of the signal to vote
+    # PARAM_NAME -> there are some parameters used in verilog to change FT behaviour
+    #               this parameter is the base name of these parameters
+    # INDEX -> error correction and detection are saved as vectors, for these
+    #           reason each voter will have a number used to address these vectors
+    # BITNUMBER -> number of bits of signal to vote
+    # VOTER_NAME -> name of the instance of the voter
+    ####################################################################################
+    data=model_data
+    # Substitute signal name
+    data = data.replace("SIGNAME",sig_name)
+    # Substitute the base name of the FT parameter in the FT package
+    data = data.replace("PARAM_NAME",param_name)
+    # Substitute the index of output for error detection and correction signals
+    data = data.replace("INDEX", str(index))
+    # The bits of the signal should be incremented by one if it is greater then one
+    if int(index) == 1:
+        data = data.replace("BITNUMBER","1")
+    else:
+        data = data.replace("BITNUMBER",str(data_bit_number[0]))
+
+    # Change voter name
+    data = data.replace("VOTER_NAME",voter_name+"_"+str(index)+"_"+sig_name)
+    ndata=""
+    for line in data.split("\n"):
+        ndata = ndata + indent + line + "\n"
+
+    return ndata
+
+def GetVotersInstances(model_file_name, module_info,param_name, align):
+    ####################################################################################
+    # This function give all voter instance starting from a model file with some
+    # parameter:
+    # model_file_name -> is the name of the model file, see GetVoterInstance to 
+    #                   understand parameters
+    # module_info -> the ouput of GetModuleInfo, are used only the output name and
+    #               bit number
+    # param_name -> when the voter is compiled need some parameter that have this common
+    #              radix,e.g. compressed decoder have CDEC as param_name and e.g if
+    #               CDEC_FT is setted triplication is implemented.
+    # align -> indentation string
+    #
+    ####################################################################################
+    fp=open(model_file_name,"r")
+    read = fp.read()
+    i=0
+    voter_instance = ""
+    for sig_name, sig_bits in zip(module_info["sig_output_name"], module_info["sig_output_bits"]):
+        voter_instance = voter_instance + GetVoterInstance(read, sig_name,"voter", param_name,i,sig_bits, align)
+        i=i+1
+
+    return voter_instance
+
+def getTripleIoPort(start,sig_name,sig_bits,append):
+    ####################################################################################
+    # Return a string starting with "start" and ending with "append". According
+    # to number of bits a vector of 3 element is created
+    ####################################################################################
+    if str(sig_bits) == "1":
+        return start + " logic [2:0] " + sig_name + append
+    else:
+        return start + " logic [2:0][" + str(int(sig_bits)-1) + ":0] " + sig_name + append
+
+def GetParameterDef(module_info, indent):
+    # Write parameter
+    i=1
+    declaration=""
+    parnum=len(module_info["parameter_name"])
+    for par_name,par_value in zip(module_info["parameter_name"],module_info["parameter_value"]):
+        if i == parnum:
+            declaration = declaration + indent + "parameter "+par_name+" = "+par_value+"\n" 
+        else:
+            declaration = declaration + indent + "parameter "+par_name+" = "+par_value+",\n" 
+    return declaration
+
+def GetFTModuleIoDeclaration( module_info, ft_sig_info, indent):
+    ####################################################################################
+    # This function create the declaration of ft module using info from module_info
+    # and adding new signal from ft_sig_info
+    ####################################################################################
+
+    declaration="module "+module_info["module"]+"_ft\n"
+    declaration= declaration + "#(\n"
+
+    # Write parameter
+    declaration+= GetParameterDef(module_info, indent)
+
+    declaration = declaration + ")\n("
+    
+    isclock=0
+    isrst_n=0
+    # Write input ports
+    declaration = declaration +"\n"+ indent + "// Input signal of "+module_info["module"]+" block\n" 
+    for sig_in,sig_bits in zip(module_info["sig_input_name"], module_info["sig_input_bits"]):
+        declaration = declaration + getTripleIoPort(indent+"input",sig_in,sig_bits[0],",\n")
+        if sig_in == "clk":
+            isclock=1
+        if sig_in == "rst_n":
+            isrst_n=1
+    
+
+
+    # Write output ports
+    declaration = declaration +"\n"+ indent + "// Output signal of "+module_info["module"]+" block\n" 
+    for sig_out,sig_bits in zip(module_info["sig_output_name"], module_info["sig_output_bits"]):
+        declaration = declaration + getTripleIoPort(indent+"output",sig_out,sig_bits[0],",\n")
+    
+    if not isclock or not isrst_n:
+        declaration = declaration +"\n"+ indent + "// Input clock and reset added for conf_voter\n" 
+    if not isclock:
+        declaration = declaration + indent + "input logic clk,\n"
+    if not isrst_n:
+        declaration = declaration + indent + "input logic rst_n,\n"
+
+    # Write new signals
+    declaration = declaration +"\n"+ indent + "// Fault tolerant state signals\n"    
+    endstr=",\n"
+    i=1
+    ftsign = len(ft_sig_info["sig_name"])
+    for name,bits,io in zip(ft_sig_info["sig_name"], ft_sig_info["sig_bits"], ft_sig_info["io"]):
+        if i == ftsign:
+            endstr="\n"
+        if str(bits) == "1":
+            declaration = declaration + indent + io + " logic " +name+endstr 
+        else:
+            declaration = declaration + indent + io + " logic ["+str(int(bits)-1)+":0] "+name+endstr 
+        i=i+1
+
+    declaration =   declaration + ");\n"
+    return declaration
+
+def GetInstance(module_name, instance_name, parameter, vect1, vect2, indent):
+    #######################################################################################
+    # This function create a verilog instance 
+    #######################################################################################
+    instance=""
+    indent2= indent + "        "
+    instance += indent + module_name + "\n"
+    instance += indent + "#( "
+    for par in parameter :
+        if par==parameter[-1]:
+            instance += par +" ) \n"
+        else:
+            instance += par +" ,"
+
+    instance += indent + instance_name + "\n"
+    instance += indent + "(\n"
+    for sig,sigin in zip(vect1, vect2):
+        if sig == vect1[-1]:
+            instance += indent2 + "." + sig + "( " + sigin + " )\n"
+        else:
+            instance += indent2 + "." + sig + "( " + sigin + " ),\n"
+    instance += indent + ");\n"
+    return instance
+
+
+def GetOrigInstance(module_info, instance_name, in_cycle, out_cycle, indent):
+    ########################################################################################
+    # This function return the instance of a module saved in module_info variable
+    # The instance created consider that all signal to connect are triplicated
+    # if the instance isn't in a cycle -> in_cycle and out_cycle should be 0
+    #                                   in this case will be added "[0]" to all in-out sig
+    # if we are in a cycle we can decide if connect each inp/out sig to corresponding block
+    # with in/out_cycle=1. In this case will be appended "[i]" to in/out signal 
+    # in this way during generate cycle each block will be connected to each block.
+    ########################################################################################
+    module_name = module_info["module"]
+    parameter = module_info["parameter_name"]
+    vect1 = module_info["sig_input_name"] + module_info["sig_output_name"]
+    vect2 = []
+    for sig in module_info["sig_input_name"]:
+        if in_cycle == 1:
+            vect2.append(sig+"[i]")
+        else:
+            vect2.append(sig+"[0]")
+    
+    for sig in module_info["sig_output_name"]:
+        if in_cycle == 1:
+            vect2.append(sig+"[i]")
+        else:
+            vect2.append(sig+"[0]")
+
+    instance = GetInstance(module_name, instance_name, parameter, vect1, vect2, indent)
+    return instance
+
+        
+def GetIndent(stringa):
+    endindent=0
+    indent_cnt=0
+    for letter in stringa:
+        if not endindent:
+            if letter==" ":
+               indent_cnt+=1
+            else:
+                return indent_cnt
+
+def GetInnerCommand(data_lines, lineno, key):
+    i=lineno+1
+    command=""
+    while not key in data_lines[i]:
+        command+=data_lines[i].strip()
+        i+=1
+        if i > len(data_lines):
+            print("ERROR at line %d end keyword %s not found" % lineno, key)
+            exit(-1)
+    return [command,i+1]
+
+def GetDeclarationForeach(block, inout, command, lineno):
+    data=""
+    if inout == "IN" or inout == "IN_OUT":
+        for sig,bit in zip(block["sig_input_name"], block["sig_input_bits"]):
+            data+= command.replace("INOUT","input").replace("SIGNAME",sig).replace("BITINIT","["+str(int(bit)-1)+":]")
+    if inout == "OUT" or inout == "IN_OUT":
+        for sig,bit in zip(block["sig_output_name"], block["sig_output_bits"]):
+            data+= command.replace("INOUT","output").replace("SIGNAME",sig).replace("BITINIT","["+str(int(bit)-1)+":]")
+    if inout != "OUT" and inout != "IN" and inout != "IN_OUT":
+        print("ERROR line %d, INOUT variable can be only IN,OUT or IN_OUT" % lineno)
+
+    return data
+
+def ElaborateFTTemplate(template_filename,block_info, module_name, param_name):
+    #############################################################################################
+    # This function start from a template file that create a FT structure of a non 
+    # FT block, in this file will be many uppercase variable that should be substitute by 
+    # block of autogenerated code. This autogenerated code depends by arguments of this function
+    # These are parameter that wil be substitute:
+    # Global variable , this variable are substitute before elaboration in all file
+    #-- MODULE_NAME -> Name of the module
+    #-- PARAM_NAME -> there are some parameters used in verilog to change FT behaviour
+    #                   this parameter is the base name of these parameters
+    #
+    # Elaboration blocks, elements in this block will be cloned for all in or out signal
+    #-- PARAMETER_DECLARATION block_name -> declare the same parameter of block_name module
+    #-- DECLARATION_FOREACH block_name inout    
+    #       declaration_command
+    #   END_DECLARATION -> cycle on block_name input (if inout=IN) or output 
+    #                   (if inout=OUT) or both (if inout=IN_OUT) and substitute follow variable:
+    #                   INOUT -> if the signal is an input INOUT="input", if it is an output INOUT="output"
+    #                   BITINIT -> if the signal has only a bit BITINIT="" otherwhise BITINIT="[BITNUMBER-1:0]"
+    #                   SIGNAME -> It is substituted with signal name
+    #-- INSTANCE block_name
+    #       PARAM = 
+    #       IN = IN_string   
+    #       OUT= OUT_string
+    #   END_INSTANCE -> create an instance of block_name connecting input/output signals adding string, 
+    #       for example:
+    #           INSTANCE BLOCK
+    #               PARAM=PARAM
+    #               IN=IN[0]
+    #               OUT = OUT_to_vote[i]
+    #           END_INSTANCE
+    #       Generate:
+    #           cv32e40p_compressed_decoder #(FPU) compressed_decoder
+    #           (
+    #               .instr_i(instr_i[0]),
+    #               .instr_o(instr_o_to_vote[i]),
+    #               .is_compressed_o(is_compressed_o_to_vote[i]),
+    #               .illegal_instr_o(illegal_instr_o_to_vote[i])
+    #           );
+    #
+    #-- INSTANCE_FOREACH block_name inout
+    #       instance_template
+    #   END_INSTANCE  -> This command cycle on input or output of block and substitute
+    #               variable in instance_template string in order to create instance of some
+    #               block connected to input, output or both of block_name block.
+    #               Variable can be:
+    #                   BITNUMBER -> number of bit of the signal to connect
+    #                   INDEX -> index of cycle
+    #                   SIGNAME -> name of the signal
+    #   
+    #-- OR_UNROLL start end operation signame -> this command unroll a reduction operation in order
+    #                   to have better representation in schematic during complation.
+    #                   For example:
+    #                       assign err_detected_o = OP_UNROLL 0 3 | err_detected ;
+    #                   Generate:
+    #                       assign err_detected_o =   err_detected[0] 
+    #                                               | err_detected[1] 
+    #                                               | err_detected[2];
+    #-- OP_FOREACH block_name inout operation expression -> apply an operation between each input
+    #               or output of block_name block. For example:
+    #                   assign block_err_detected[m] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[m] ;
+    #               Generate:
+    #                   assign block_err_detected[m] =   instr_o_block_err[m]
+    #                                                  | illegal_instr_o_block_err[m]
+    #                                                  | is_compressed_o_block_err[m];
+    #   
+    #############################################################################################
+
+    fp = open(template_filename,"r") 
+    data_orig=fp.read()
+    tab="        "
+    data_orig=data_orig.replace("\t",tab)
+    
+    # Substitution of constant
+    data = data_orig.replace("MODULE_NAME",module_name)
+    data = data.replace("PARAM_NAME", param_name)
+    data_line = data.split("\n")
+
+    data_elab=""
+    lineno=0
+    linemax=len(data_line)
+
+    while lineno < linemax:
+        line=data_line[lineno]
+        line_indent=GetIndent(line)
+        line_strip = line.strip()
+        line_strip_split = line_strip.split(" ")
+
+        # Parameter declaration
+        if "PARAMETER_DECLARATION" in line_strip:
+            if len(line_strip_split) == 2:
+                # get the dictionary of info of corresponding block
+                block=block_info[line_strip_split[1]]
+                data_elab += GetParameterDef(block, line_indent*" ")
+            else:
+                print("ERROR! PARAMETER_DECLARATION at line %d need the name of block to copy parameter" % lineno)
+                exit(1)
+        elif "DECLARATION_FOREACH" in line_strip:
+            if len(line_strip_split) == 3:
+                block=block_info[line_strip_split[1]]
+                inout=line_strip_split[2]
+                [command, lineno]= GetInnerCommand(data_line, lineno, "END_DECLARATION_FOREACH")
+                data_elab += GetDeclarationForeach(block, inout, command, lineno)    
+            else:
+                print("ERROR! DECLARATION_FOREACH at line %d needed block name and IN/OUT/IN_OUT option" % lineno)
+                print("LINE: %s" % line_strip_split)
+                exit(1) 
+        else:
+            data_elab+=line + "\n"
+
+        lineno+=1
+
+
+    return data_elab
+
+    
+
+
+
+

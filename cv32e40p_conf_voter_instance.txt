@@ -1,0 +1,16 @@
+// Voter for TOVOTE signal, triple voter if
+// PARAM_NAME_TOUT[INDEX] == 1
+cv32e40p_conf_voter
+#(     
+        .L1(BITNUMBER),
+        .TOUT(PARAM_NAME_TOUT[INDEX])
+) VOTER_NAME
+(
+        .to_vote_i( SIGNAME_to_vote ),
+        .voted_o( SIGNAME),
+        .block_err_o( SIGNAME_block_err),
+        .broken_block_i(is_broken_o),
+        .err_detected_o(err_detected[INDEX]),
+        .err_corrected_o(err_corrected[INDEX])
+);
+

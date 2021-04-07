@@ -12,8 +12,8 @@
 // Engineer:       Elia Ribaldone  - ribaldoneelia@gmail.com                  //
 //                                                                            //
 // Additional contributions by:                                               //
-//                                                                            //
-//                                                                            //
+//                  Marcello Neri - s257090@studenti.polito.it                //
+//                   Luca Fiore - luca.fiore@studenti.polito.it               //
 // Design Name:    Compressed instruction decoder fault tolerant              //
 // Project Name:   RI5CY                                                      //
 // Language:       SystemVerilog                                              //
@@ -24,21 +24,28 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-import ft_pkg::*;
+import cv32e40p_ft_pkg::*;
 
 module cv32e40p_compressed_decoder_ft
 #(
 	parameter int FPU = 0
 )
 (
+	// clock and reset
 	input logic clk,
 	input logic rst_n,
+
+	// compressed decoder input output  
 	input  logic [2:0][31:0] instr_i,
 	output logic [2:0][31:0] instr_o,
 	output logic [2:0]      is_compressed_o,
 	output logic [2:0]      illegal_instr_o,
+
+	// fault tolerant state
 	input logic [2:0] set_broken_i,
-	output logic [2:0] is_broken_o
+	output logic [2:0] is_broken_o,
+	output logic err_detected_o,
+	output logic err_corrected_o
 );
 
 	// Signals out to each compressed decoder block to be voted
@@ -54,7 +61,8 @@ module cv32e40p_compressed_decoder_ft
 	// Signals that use error signal to find if there is one error on
 	// each block, it is the or of previous signals
 	logic [2:0] block_err_detected;
-
+	logic [2:0] err_detected;
+	logic [2:0] err_corrected;
 
 	// variable for generate cycle
 	generate
@@ -109,7 +117,10 @@ module cv32e40p_compressed_decoder_ft
 				(
 					.to_vote_i( instr_o_to_vote ),
 					.voted_o( instr_o),
-					.block_err_o( instr_o_block_err)
+					.block_err_o( instr_o_block_err),
+					.broken_block_i(is_broken_o),
+					.err_detected_o(err_detected[0]),
+					.err_corrected_o(err_corrected[0])
 				);
 				
 				// Output case for is_compressed_o 
@@ -121,7 +132,10 @@ module cv32e40p_compressed_decoder_ft
 				(
 					.to_vote_i( is_compressed_o_to_vote ),
 					.voted_o( is_compressed_o),
-					.block_err_o( is_compressed_o_block_err)
+					.block_err_o( is_compressed_o_block_err),
+					.broken_block_i(is_broken_o),
+					.err_detected_o(err_detected[1]),
+					.err_corrected_o(err_corrected[1])
 				);
 
 				// Output case for illega_instr_o
@@ -133,10 +147,16 @@ module cv32e40p_compressed_decoder_ft
 				(
 					.to_vote_i( illegal_instr_o_to_vote ),
 					.voted_o( illegal_instr_o),
-					.block_err_o( illegal_instr_o_block_err)
+					.block_err_o( illegal_instr_o_block_err),
+					.broken_block_i(is_broken_o),
+					.err_detected_o(err_detected[2]),
+					.err_corrected_o(err_corrected[2])
 				);
 				
-
+				
+				assign err_detected_o = err_detected[0] | err_detected[1] | err_detected[2];
+				assign err_corrected_o = err_corrected[0] | err_corrected[1] | err_corrected[2];	
+					
 				genvar m;
 				for (m=0;  m<3 ; m=m+1) begin 
 					assign block_err_detected[m] =   instr_o_block_err[m] 

@@ -44,5 +44,35 @@ package ft_pkg;
 	parameter CDEC_COUNT_BIT = 8; 
 	parameter CDEC_INC_DEC_BIT = 2; 
 
+	//////////////////////////////////////////////////////////////////////
+        //	       _ _
+	//	  __ _| (_) __ _ _ __   ___ _ __
+	//	 / _` | | |/ _` | '_ \ / _ \ '__|
+	//	| (_| | | | (_| | | | |  __/ |
+	//	 \__,_|_|_|\__, |_| |_|\___|_|
+	//		   |___/                             parameters
+	//////////////////////////////////////////////////////////////////////
+
+	parameter int ALIG_FT = 1; // Used fault tolerance if it is one
+	parameter int ALIG_TIN = 1; // triplicated input if one
+        // TOUT is referred to output signal in order of definition
+        // TOUT[0] refers to instr_o
+        // TOUT[1] refers to is_compressed_o
+        // TOUT[2] refers to illegal_instr_o
+        //
+	// Output:      ALIG_TOUT[0]  aligner_ready_o  -> if_stage FSM
+	// 		ALIG_TOUT[1]  instr_aligned_o  -> Compressed_decoder
+	// 		ALIG_TOUT[2]  instr_valid_o    -> Pipeline
+	// 		ALIG_TOUT[3]  pc_o             -> Pipeline & Output
+	//
+	//                               3 2 1 0
+	parameter int ALIG_TOUT [3:0] = {0,0,1,0};
+
+	// Parameter for breakage monitors
+	parameter ALIG_DECREMENT = 1; 
+	parameter ALIG_INCREMENT = 1; 
+	parameter ALIG_BREAKING_THRESHOLD = 3; 
+	parameter ALIG_COUNT_BIT = 8; 
+	parameter ALIG_INC_DEC_BIT = 2; 
 
 endpackage

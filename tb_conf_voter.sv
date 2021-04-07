@@ -1,5 +1,3 @@
-// Code your testbench here
-// or browse Examples
 
 module tb;
 	logic [2:0][31:0] instr ;
