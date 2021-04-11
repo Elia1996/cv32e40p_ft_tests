@@ -50,6 +50,7 @@ module cv32e40p_3voter
 		case (broken_block_i) 
 			3'b001: begin  // the first input is broken
 				voted_o=in_2_i;
+				err_detected_1_o = 1'b0;
 				if (in_2_i!=in_3_i) begin
 					err_detected_2_o = 1'b1;
 					err_detected_3_o = 1'b1;
@@ -59,6 +60,13 @@ module cv32e40p_3voter
 					err_detected_3_o = 1'b0;
 					err_corrected_o  = 1'b0;
 				end
+			end
+			3'b101: begin	
+				voted_o=in_2_i;
+				err_detected_1_o = 1'b0;
+				err_detected_2_o = 1'b0;
+				err_detected_3_o = 1'b0;
+				err_corrected_o  = 1'b0;
 			end
 			3'b010: begin  // the second input is broken
 				voted_o=in_3_i;
@@ -72,7 +80,13 @@ module cv32e40p_3voter
 					err_corrected_o  = 1'b0;
 				end
 			end
-
+			3'b011: begin	
+				voted_o=in_3_i;
+				err_detected_1_o = 1'b0;
+				err_detected_2_o = 1'b0;
+				err_detected_3_o = 1'b0;
+				err_corrected_o  = 1'b0;
+			end
 			3'b100: begin  // the third input is broken
 				voted_o=in_1_i;
 				if (in_1_i!=in_2_i) begin
@@ -85,7 +99,13 @@ module cv32e40p_3voter
 					err_corrected_o  = 1'b0;
 				end
 			end
-
+			3'b110: begin	
+				voted_o=in_1_i;
+				err_detected_1_o = 1'b0;
+				err_detected_2_o = 1'b0;
+				err_detected_3_o = 1'b0;
+				err_corrected_o  = 1'b0;
+			end
 			default: begin // if is not true that only two inputs can be correct	
 				if (in_1_i!=in_2_i && in_1_i!=in_3_i && in_2_i!=in_3_i) begin // the 3 outputs are all different
 					err_detected_1_o = 1'b1;

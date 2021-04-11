@@ -69,7 +69,7 @@ module cv32e40p_compressed_decoder_ft
                         0 : begin
                                 cv32e40p_compressed_decoder
                                 #( FPU ) 
-                                cv32e40p_compressed_decoder_no_ft
+                                compressed_decoder_no_ft
                                 (
                                         .instr_i( instr_i[0] ),
                                         .instr_o( instr_o[0] ),
@@ -87,7 +87,7 @@ module cv32e40p_compressed_decoder_ft
                                                 for (i=0; i<3; i=i+1)  begin 
                                                         cv32e40p_compressed_decoder
                                                         #( FPU ) 
-                                                        BLOCK_NODNAME_single_input
+                                                        compressed_decoder_single_input
                                                         (
                                                                 .instr_i( instr_i[0] ),
                                                                 .instr_o( instr_o_to_vote[i] ),
@@ -100,7 +100,7 @@ module cv32e40p_compressed_decoder_ft
                                                 for (i=0; i<3; i=i+1)  begin 
                                                         cv32e40p_compressed_decoder
                                                         #( FPU ) 
-                                                        cv32e40p_compressed_decoder_tiple_input
+                                                        compressed_decoder_tiple_input
                                                         (
                                                                 .instr_i( instr_i[i] ),
                                                                 .instr_o( instr_o_to_vote[i] ),

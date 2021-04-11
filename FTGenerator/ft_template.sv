@@ -33,14 +33,12 @@ module MODULE_NAME_ft
 (
 
 	// compressed decoder input output
-	DECLARATION_FOREACH BLOCK IN_OUT
+	DECLARATION_FOREACH BLOCK IN_OUT NOT clk rst_n
 		INOUT logic [2:0]BITINIT SIGNAME,
 	END_DECLARATION_FOREACH
 	
-	DECLARATION_IF_NOT_PORT BLOCK clk rst_n
-		input logic clk,
-		input logic rst_n,		
-	END_DECLARATION_IF_NOT_PORT
+	input logic clk,
+	input logic rst_n,		
 
 	// fault tolerant state
         input logic [2:0] set_broken_i,
@@ -70,6 +68,7 @@ module MODULE_NAME_ft
 			0 : begin
 				INSTANCE BLOCK BLOCK_MODNAME_no_ft
 					PARAM=PARAM
+					IF clk rst_n IN=IN
 					IN=IN [0]
 					OUT = OUT [0]
 				END_INSTANCE
@@ -83,9 +82,10 @@ module MODULE_NAME_ft
 					0 : begin // Single input
 						genvar i;
 						for (i=0; i<3; i=i+1)  begin 
-							INSTANCE BLOCK BLOCK_NODNAME_single_input 
+							INSTANCE BLOCK BLOCK_MODNAME_single_input 
 								PARAM=PARAM
-								IN=IN [0]
+								IF clk rst_n IN=IN
+								IN=IN [0] 
 								OUT = OUT _to_vote[i]
 							END_INSTANCE
 						end						
@@ -95,6 +95,7 @@ module MODULE_NAME_ft
 						for (i=0; i<3; i=i+1)  begin 
 							INSTANCE BLOCK BLOCK_MODNAME_tiple_input
 								PARAM=PARAM
+								IF clk rst_n IN=IN
 								IN = IN [i]
 								OUT = OUT _to_vote[i]
 							END_INSTANCE
@@ -122,10 +123,13 @@ module MODULE_NAME_ft
 				
 				assign err_detected_o = OP_UNROLL 0 3 | err_detected ;
 				assign err_corrected_o = OP_UNROLL 0 3 | err_corrected ;
+				
+				assign block_err_detected[0] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[0] ; 
+				assign block_err_detected[1] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[1] ; 
+				assign block_err_detected[2] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[2] ; 
 					
 				genvar m;
 				for (m=0;  m<3 ; m=m+1) begin 
-					assign block_err_detected[m] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[m] ; 
 					// This block is a counter that is incremented each
 					// time there is an error and decremented when it
 					// there is not. The value returned is is_broken_o

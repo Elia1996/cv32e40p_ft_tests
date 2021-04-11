@@ -1,16 +1,8 @@
 #!/usr/bin/python3
-from __future__ import absolute_import
-from __future__ import print_function
 import sys
 import os
-import collections
-
-
-from veriloggen import *
-
-from block_info import *
-
 import re
+import json
 
 def RemoveComments(string):
     # remove all occurrences streamed comments (/*COMMENT */) from string
@@ -48,38 +40,61 @@ def GetModuleInfo(filename):
     parameter_name = []
     parameter_bits = []
     parameter_value = []
+    sig_intern_name = []
+    sig_intern_bits = []
 
+    cnt=0
+    save_intern_signals=0
     for line in fp.readlines():
-        if (" input " in line) or (" output " in line):
-            line = RemoveComments(line)
-            real_line = " ".join(line.split()).replace(',','')
+        line = RemoveComments(line)
+        if not save_intern_signals:
+            if (" input " in line) or (" output " in line):
+                real_line = " ".join(line.split()).replace(',','')
 
-        if " input " in line:
-            sig_input_name.append(real_line.split()[-1])
-            sig_input_bits.append(GetBits(line))
-       
-        if " output " in line:
-            sig_output_name.append(real_line.split()[-1])
-            sig_output_bits.append(GetBits(line))
-        if re.match(mod_patt,line):
-            module = line.split(" ")[1].strip()
+            if " input " in line:
+                sig_input_name.append(real_line.split()[-1])
+                sig_input_bits.append(GetBits(line))
+           
+            if " output " in line:
+                sig_output_name.append(real_line.split()[-1])
+                sig_output_bits.append(GetBits(line))
+            if re.match(mod_patt,line):
+                module = line.split(" ")[1].strip()
 
-        if re.match("^.*parameter.*[,)\n]", line):
-            real_line=line.strip()
-            real_line=real_line.replace(",","").strip()
-            l1=real_line.split("=")
-            l=l1[0].strip().split(" ")
-            parameter_name.append(l[-1])
-            if "[" in l[-1] :
-                print("not implemented!!")
-                exit(-1)
-            else:
-                parameter_bits.append(1)
-            parameter_value.append(l1[1].strip())
+            if re.match("^.*parameter.*[,)\n]", line):
+                real_line=" ".join(line.split()).strip()
+                real_line=real_line.replace(",","").strip()
+                l1=real_line.split("=")
+                l=l1[0].strip().split(" ")
+                parameter_name.append(l[-1])
+                if "[" in l[-1] :
+                    print("not implemented!!")
+                    exit(-1)
+                else:
+                    parameter_bits.append(1)
+                parameter_value.append(l1[1].strip())
+        else:
+            line_split = " ".join(line.strip().replace(";","").replace("\t","").replace(","," ").split())
+            line_split = line_split.split(" ")
+            if len(line_split)!=0 and line_split[0] == "logic":
+                for word in line_split[1:]:
+                    if not "[" in word:
+                        sig_intern_name.append(word)
+                        sig_intern_bits.append(GetBits(line))
+
+        if cnt==0 and "#(" in line:
+            cnt+=1
+        elif cnt==1 and ")" in line:
+            cnt+=1
+        elif cnt==2 and "(" in line:
+            cnt+=1
+        elif cnt==3 and ");" in line:
+            save_intern_signals=1
+            cnt+=1
 
 
 
-    return {"module":module,"parameter_value":parameter_value, "parameter_name":parameter_name, "parameter_bits":parameter_bits, "sig_input_name" : sig_input_name , "sig_input_bits":sig_input_bits, "sig_output_name":sig_output_name, "sig_output_bits":sig_output_bits }
+    return {"module":module,"parameter_value":parameter_value, "parameter_name":parameter_name, "parameter_bits":parameter_bits, "sig_input_name" : sig_input_name , "sig_input_bits":sig_input_bits, "sig_output_name":sig_output_name, "sig_output_bits":sig_output_bits , "sig_intern_name": sig_intern_name, "sig_intern_bits":sig_intern_bits}
 
 
 def GetVoterInstance(model_data, sig_name, voter_name, param_name, index, data_bit_number, indent):    
@@ -147,40 +162,59 @@ def getTripleIoPort(start,sig_name,sig_bits,append):
     if str(sig_bits) == "1":
         return start + " logic [2:0] " + sig_name + append
     else:
-        return start + " logic [2:0][" + str(int(sig_bits)-1) + ":0] " + sig_name + append
+        if type(sig_bits) == list:
+            return start + " logic [2:0][" + str(int(sig_bits[0])-1) + ":0] " + sig_name + append
+        else: 
+            return start + " logic [2:0][" + str(int(sig_bits)-1) + ":0] " + sig_name + append
+
+def getIoPort(start,sig_name,sig_bits,append):
+    ####################################################################################
+    # Return a string starting with "start" and ending with "append".
+    ####################################################################################
+    if str(sig_bits) == "1":
+        return start + " logic " + sig_name + append
+    else:
+        if type(sig_bits) == list:
+            return start + " logic [" + str(int(sig_bits[0])-1) + ":0] " + sig_name + append
+        else:
+            return start + " logic [" + str(int(sig_bits)-1) + ":0] " + sig_name + append
 
 def GetParameterDef(module_info, indent):
     # Write parameter
     i=1
     declaration=""
-    parnum=len(module_info["parameter_name"])
-    for par_name,par_value in zip(module_info["parameter_name"],module_info["parameter_value"]):
-        if i == parnum:
-            declaration = declaration + indent + "parameter "+par_name+" = "+par_value+"\n" 
-        else:
-            declaration = declaration + indent + "parameter "+par_name+" = "+par_value+",\n" 
+    if module_info["parameter_name"] != []:
+        declaration= declaration + "#(\n"
+        parnum=len(module_info["parameter_name"])
+        for par_name,par_value in zip(module_info["parameter_name"],module_info["parameter_value"]):
+            if i == parnum:
+                declaration = declaration + indent + "parameter "+par_name+" = "+par_value+"\n" 
+            else:
+                declaration = declaration + indent + "parameter "+par_name+" = "+par_value+",\n" 
+        declaration = declaration + ")\n"
     return declaration
 
-def GetFTModuleIoDeclaration( module_info, ft_sig_info, indent):
+def GetFTModuleIoDeclaration( module_info, ft_sig_info, indent, ft=1):
     ####################################################################################
     # This function create the declaration of ft module using info from module_info
     # and adding new signal from ft_sig_info
     ####################################################################################
 
     declaration="module "+module_info["module"]+"_ft\n"
-    declaration= declaration + "#(\n"
 
     # Write parameter
     declaration+= GetParameterDef(module_info, indent)
-
-    declaration = declaration + ")\n("
+    declaration += "( "
     
     isclock=0
     isrst_n=0
     # Write input ports
     declaration = declaration +"\n"+ indent + "// Input signal of "+module_info["module"]+" block\n" 
     for sig_in,sig_bits in zip(module_info["sig_input_name"], module_info["sig_input_bits"]):
-        declaration = declaration + getTripleIoPort(indent+"input",sig_in,sig_bits[0],",\n")
+        if ft == 1:
+            declaration = declaration + getTripleIoPort(indent+"input",sig_in,sig_bits[0],",\n")
+        else:
+            declaration = declaration + getIoPort(indent+"input",sig_in,sig_bits[0],",\n")
         if sig_in == "clk":
             isclock=1
         if sig_in == "rst_n":
@@ -191,30 +225,41 @@ def GetFTModuleIoDeclaration( module_info, ft_sig_info, indent):
     # Write output ports
     declaration = declaration +"\n"+ indent + "// Output signal of "+module_info["module"]+" block\n" 
     for sig_out,sig_bits in zip(module_info["sig_output_name"], module_info["sig_output_bits"]):
-        declaration = declaration + getTripleIoPort(indent+"output",sig_out,sig_bits[0],",\n")
-    
-    if not isclock or not isrst_n:
-        declaration = declaration +"\n"+ indent + "// Input clock and reset added for conf_voter\n" 
-    if not isclock:
-        declaration = declaration + indent + "input logic clk,\n"
-    if not isrst_n:
-        declaration = declaration + indent + "input logic rst_n,\n"
-
-    # Write new signals
-    declaration = declaration +"\n"+ indent + "// Fault tolerant state signals\n"    
-    endstr=",\n"
-    i=1
-    ftsign = len(ft_sig_info["sig_name"])
-    for name,bits,io in zip(ft_sig_info["sig_name"], ft_sig_info["sig_bits"], ft_sig_info["io"]):
-        if i == ftsign:
-            endstr="\n"
-        if str(bits) == "1":
-            declaration = declaration + indent + io + " logic " +name+endstr 
+        if ft == 1:
+            declaration = declaration + getTripleIoPort(indent+"output",sig_out,sig_bits[0],",\n")
         else:
-            declaration = declaration + indent + io + " logic ["+str(int(bits)-1)+":0] "+name+endstr 
-        i=i+1
+            declaration = declaration + getIoPort(indent+"output",sig_out,sig_bits[0],",\n")
+    
+    if ft == 1:
+        if not isclock or not isrst_n:
+            declaration = declaration +"\n"+ indent + "// Input clock and reset added for conf_voter\n" 
+        if not isclock:
+            declaration = declaration + indent + "input logic clk,\n"
+        if not isrst_n:
+            declaration = declaration + indent + "input logic rst_n,\n"
+
+        # Write new signals
+        declaration = declaration +"\n"+ indent + "// Fault tolerant state signals\n"    
+        endstr=",\n"
+        if len(ft_sig_info) > 0 :
+            i=1
+            ftsign = len(ft_sig_info["sig_name"])
+            for name,bits,io in zip(ft_sig_info["sig_name"], ft_sig_info["sig_bits"], ft_sig_info["io"]):
+                if i == ftsign:
+                    endstr="\n"
+                if str(bits) == "1":
+                    declaration = declaration + indent + io + " logic " +name+endstr 
+                else:
+                    declaration = declaration + indent + io + " logic ["+str(int(bits)-1)+":0] "+name+endstr 
+                i=i+1
 
     declaration =   declaration + ");\n"
+
+    # Write internal signals if they exist
+    if "sig_intern_name" in module_info.keys():
+        for sig,bit in zip(module_info["sig_intern_name"], module_info["sig_intern_bits"]):
+            declaration += getTripleIoPort(indent, sig,bit, ";\n")
+
     return declaration
 
 def GetInstance(module_name, instance_name, parameter, vect1, vect2, indent):
@@ -223,15 +268,17 @@ def GetInstance(module_name, instance_name, parameter, vect1, vect2, indent):
     #######################################################################################
     instance=""
     indent2= indent + "        "
-    instance += indent + module_name + "\n"
-    instance += indent + "#( "
+    instance += indent + module_name 
+    if len(parameter) >= 1:
+        instance +="\n"+ indent + "#( "
     for par in parameter :
         if par==parameter[-1]:
             instance += par +" ) \n"
         else:
             instance += par +" ,"
-
-    instance += indent + instance_name + "\n"
+    if len(parameter) >= 1:
+        instance += indent
+    instance += " " +instance_name + "\n"
     instance += indent + "(\n"
     for sig,sigin in zip(vect1, vect2):
         if sig == vect1[-1]:
@@ -261,7 +308,7 @@ def GetOrigInstance(module_info, instance_name, param_pre_suf, in_pre_suf, out_p
     
     for sig in module_info["sig_output_name"]:
         if out_pre_suf[0] == "UNIQUE":
-            vect2.append(out_pre_suf[0]+ sig+out_pre_suf[1])
+            vect2.append(out_pre_suf[1])
         else:
             vect2.append(out_pre_suf[0]+sig+out_pre_suf[1])
 
@@ -298,7 +345,7 @@ def GetInnerCommand(data_lines, lineno, key):
             exit(-1)
     return [command,i+1]
 
-def GetDeclarationForeach(block, inout, command, lineno, indent):
+def GetDeclarationForeach(block, inout, command, cmd2, lineno, indent):
     ###########################################################################################
     # This function create a declaration foreach IN, OUT or both of a block.
     # Cycling along input or/and output SIGNAME and BITINIT are substituted in "command" string
@@ -306,18 +353,29 @@ def GetDeclarationForeach(block, inout, command, lineno, indent):
     data=""
     if inout == "IN" or inout == "IN_OUT":
         for sig,bit in zip(block["sig_input_name"], block["sig_input_bits"]):
-            data += indent
-            if int(bit[0]) == 1:
-                data+= command.replace("INOUT","input").replace("SIGNAME",sig).replace("BITINIT","") 
-            else:
-                data+= command.replace("INOUT","input").replace("SIGNAME",sig).replace("BITINIT","["+str(int(bit[0])-1)+":0]") 
+            ok=1
+            if "NOT" in cmd2.keys():
+                if sig in cmd2["NOT"]:
+                    ok=0
+            if ok==1:
+                data += indent
+                if int(bit[0]) == 1:
+                    data+= command.replace("INOUT","input").replace("SIGNAME",sig).replace("BITINIT","") 
+                else:
+                    data+= command.replace("INOUT","input").replace("SIGNAME",sig).replace("BITINIT","["+str(int(bit[0])-1)+":0]") 
+
     if inout == "OUT" or inout == "IN_OUT":
         for sig,bit in zip(block["sig_output_name"], block["sig_output_bits"]):
-            data += indent
-            if int(bit[0]) == 1:
-                data+= command.replace("INOUT","output").replace("SIGNAME",sig).replace("BITINIT","") 
-            else:
-                data+= command.replace("INOUT","output").replace("SIGNAME",sig).replace("BITINIT","["+str(int(bit[0])-1)+":0]")
+            ok=1
+            if "NOT" in cmd2.keys():
+                if sig in cmd2["NOT"]:
+                    ok=0
+            if ok==1:
+                data += indent
+                if int(bit[0]) == 1:
+                    data+= command.replace("INOUT","output").replace("SIGNAME",sig).replace("BITINIT","") 
+                else:
+                    data+= command.replace("INOUT","output").replace("SIGNAME",sig).replace("BITINIT","["+str(int(bit[0])-1)+":0]")
     if inout != "OUT" and inout != "IN" and inout != "IN_OUT":
         print("ERROR line %d, INOUT variable can be only IN,OUT or IN_OUT" % lineno)
 
@@ -332,8 +390,9 @@ def GetDeclarationIfNotPort(block, sig_to_verify, command, lineno, indent):
     lista = block["sig_input_name"] + block["sig_output_name"]
     
     for sig in lista:
-        if sig_to_verify == sig:
-            return ""
+        for sig2 in sig_to_verify: 
+            if sig2 == sig:
+                return ""
     data = ""
     for line in command.split("\n"):
         data += indent + line + "\n"
@@ -341,7 +400,7 @@ def GetDeclarationIfNotPort(block, sig_to_verify, command, lineno, indent):
     return data
 
 def GetPrefixSuffix(what, sequence, key, lineno):
-    #############################################################################à
+    #############################################################################
     # This function analyze sequence list and it find prefix and suffix of key
     # the general format is "prefix key suffix", key can also don't exist, but
     # should be at least a word. We could have the following case:
@@ -349,7 +408,7 @@ def GetPrefixSuffix(what, sequence, key, lineno):
     #   key suffix
     #   suffix
     #   prefix key suffix
-    #############################################################################à
+    #############################################################################
     prefix=""
     suffix=""
     if what == key:
@@ -368,16 +427,49 @@ def GetPrefixSuffix(what, sequence, key, lineno):
             else:
                 print("ERROR : line %d, when you give two argument first or second should be %s" % lineno,key)
                 exit(-1)
-        elif len(sequence) == 1:
+        elif len(sequence) == 1 and sequence[0] != "IN" and sequence[0] != "OUT" and sequence[0] != "PARAM":
             prefix="UNIQUE"
             suffix = sequence[0]
+        elif len(sequence) == 1:
+            prefix=""
+            suffix=""
         else:
             print("ERROR : line %d, you should said how to connect signals" % lineno)
             exit(-1)
     return [prefix, suffix]
 
 
+def  SetSignalElaborationInstance(block, siglist, inoutpar, after_equal, signal_elab, lineno):
+    if inoutpar != "IN" and inoutpar != "OUT" and inoutpar != "PARAM":
+        print("ERROR line %d, only IN, OUT and PARAM is possible"%lineno)
+        exit(-1)
+    sigdict = {"IN":block["sig_input_name"],  "OUT":block["sig_output_name"], "PARAM":block["parameter_name"]}
+    pre_suf = GetPrefixSuffix(inoutpar, after_equal, inoutpar,lineno)
+    append_list = []
+    flag=0
+    for sig in siglist:
+        if not sig in sigdict[inoutpar]:
+            print("ERROR line %d, signal %s isn't an %s signal of set block" % lineno, sig,inoutpar)
+            exit(-1)
+        if len(signal_elab[inoutpar])==0:
+            append_list.append(sig)
+            flag=1
+        else:
+            thereis=0
+            for data in signal_elab[inoutpar]:
+                for sig1 in data[0]:
+                    if sig == sig1:
+                        thereis =1
 
+            if not thereis:
+                append_list.append(sig)
+                flag=1
+
+    if flag==1:
+        signal_elab[inoutpar].append([append_list,pre_suf])
+    
+    return signal_elab
+            
 
 def GetCmdInstance(block,  command, instance_name, lineno, indent):
     #########################################################################################
@@ -385,27 +477,61 @@ def GetCmdInstance(block,  command, instance_name, lineno, indent):
     # instance, instance_name is the name of the instance while block is a 
     # dictionary with info about the module
     #########################################################################################
-    cmd_split=command.strip().split("\n")
-    param_pre_suf=["",""]
-    in_pre_suf=["",""]
-    out_pre_suf=["",""]
+    cmd_line=command.strip().split("\n")
     data=""
-    for cmd in cmd_split:
-        if "=" in cmd:
+    signal_elab  = {"OUT":[],"IN":[],"PARAM":[]} 
+    sigdict = {"IN":block["sig_input_name"],  "OUT":block["sig_output_name"], "PARAM":block["parameter_name"]}
+    for cmd in cmd_line:
+        cmd_list=cmd.strip().split(" ")
+        if cmd_list[0] == "IF":
+            if not "IN" in cmd and not "OUT" in cmd and not "PARAM" in cmd and not "=" in cmd:
+                print("ERROR line %d, IF without IN,OUT or PARAM keyword"%lineno)
+                exit(-1)
+            else:
+                before_equal=cmd.split("=")[0].strip()
+                what = before_equal.strip().split(" ")[-1]
+                apply_to_list = before_equal.strip().split(" ")[1:-1] 
+                equal_to=cmd.split("=")[1].strip() 
+                sequence = equal_to.split(" ")
+                if what == "IN" or what == "OUT" or what == "PARAM":
+                    signal_elab = SetSignalElaborationInstance(block, apply_to_list,what, sequence, signal_elab, lineno)
+                else:
+                    print("ERROR, line "+str(lineno)+", use IN, OUT and PARAM command only, not -"+what+"-")
+                    exit(-1) 
+        elif "=" in cmd:
                 what=cmd.split("=")[0].strip() 
                 equal_to=cmd.split("=")[1].strip() 
                 sequence = equal_to.split(" ")
-                if what == "IN":
-                    in_pre_suf = GetPrefixSuffix(what, sequence, "IN",lineno)
-                elif what == "OUT":
-                    out_pre_suf = GetPrefixSuffix(what, sequence, "OUT",lineno)
-                elif what == "PARAM":
-                    param_pre_suf = GetPrefixSuffix(what, sequence, "PARAM",lineno)
+                if what == "IN" or what == "OUT" or what == "PARAM":
+                    signal_elab = SetSignalElaborationInstance(block, sigdict[what],what, sequence, signal_elab, lineno)
                 else:
                     print("ERROR, line "+str(lineno)+", use IN, OUT and PARAM command only, not -"+what+"-")
                     exit(-1)
-                
-    data += GetOrigInstance(block, instance_name, param_pre_suf, in_pre_suf, out_pre_suf, indent)
+                    
+    module_name = block["module"]
+    parameter = block["parameter_name"]
+    vect1 = block["sig_input_name"] + block["sig_output_name"]
+    vect2 = []
+
+    for sig in block["sig_input_name"]:
+        for sig_tc_list in signal_elab["IN"]:
+            for sig_tc in sig_tc_list[0]:
+                if sig == sig_tc:
+                    if sig_tc_list[1][0] == "UNIQUE":
+                        vect2.append(sig_tc_list[1][1])
+                    else:
+                        vect2.append(sig_tc_list[1][0]+sig+sig_tc_list[1][1])
+    
+    for sig in block["sig_output_name"]:
+        for sig_tc_list in signal_elab["OUT"]:
+            for sig_tc in sig_tc_list[0]:
+                if sig == sig_tc:
+                    if sig_tc_list[1][0] == "UNIQUE":
+                        vect2.append(sig_tc_list[1][1])
+                    else:
+                        vect2.append(sig_tc_list[1][0]+sig+sig_tc_list[1][1])
+    
+    data += GetInstance(module_name, instance_name, parameter, vect1, vect2, indent)                
 
     return data
 
@@ -457,9 +583,9 @@ def GetInstanceForeach(block_info, model_data, inout, lineno,indent):
     return instance
 
 def GetOpUnroll(line_strip, start, end, op, sig, lineno, indent):
-    ######################################################################################à
+    ######################################################################################
     # 
-    ######################################################################################à
+    #####################################################################################
     if start > end or start==end:
         print("Error line %d, start (%d) should be less then end (%d)"%lineno,start,end)
         exit(-1)
@@ -519,10 +645,313 @@ def GetOpForeach(line_strip, block_info, inout, op, sig, lineno, indent):
         i+=1
 
     return unroll
-    
+
+def FindIfSigInModule(module_info, sig):
+    if sig in module_info["sig_input_name"]:
+        # We save the number of bits of the input signal 
+        cmd_in_bits = module_info["sig_input_bits"][module_info["sig_input_name"].index(sig)]
+    elif sig in module_info["sig_output_name"]:
+        # Save bits
+        cmd_in_bits = module_info["sig_output_bits"][module_info["sig_output_name"].index(sig)]
+    elif sig in module_info["sig_intern_name"]:
+        # Save bits
+        cmd_in_bits = module_info["sig_intern_bits"][module_info["sig_intern_name"].index(sig)]
+    else:
+        # The signal should be at least in the input/output/intern signal
+        return 0
+    return cmd_in_bits
     
 
-def ElaborateFTTemplate(template_filename, block_info, module_name, param_name):
+
+def CreateNewBlockInfo(cmd_dict, module_info):
+    cmd_in_sig = cmd_dict["IN"]
+    cmd_out_sig = cmd_dict["OUT"]
+    cmd_io = cmd_in_sig + cmd_out_sig
+    cmd_verilog_block = cmd_dict["verilog_block"]
+    orig_all_sig = module_info["sig_input_name"] + module_info["sig_output_name"] +  module_info["sig_intern_name"]
+
+    new_block = {}
+    new_block["sig_input_bits"] = []
+    new_block["sig_input_name"] = cmd_in_sig
+    new_block["sig_output_bits"] = []
+    new_block["sig_output_name"] = cmd_out_sig
+    # These are the signals to init in the new block
+    new_block["sig_intern_name"] =[]
+    new_block["sig_intern_bits"] =[]
+    new_block["parameter_name"] = []
+    new_block["parameter_bits"] = []
+    new_block["verilog_block"] = cmd_dict["verilog_block"]
+
+
+    # We cycle on all signals of input and output of new block
+    # and check that their exist in main module, input, output or internal signals
+
+    # INPUT SIGNALS
+    # Verify input of new block and save their bits
+    for sig in cmd_in_sig:  
+        bits = FindIfSigInModule(module_info,sig)
+        if bits != 0:
+            # Save bits
+            new_block["sig_input_bits"].append( bits )
+        else:
+            # The signal should be at least in the input/output/intern signal
+            print("ERROR, signal %s there isn't in the main module IO and intern signals." % sig)
+            exit(-1)
+
+    # OUTPUT SIGNALS
+    # Verify outputs of new block and save their bits
+    for sig in cmd_out_sig:  
+        bits = FindIfSigInModule(module_info,sig)
+        if bits != 0:
+            # Save bits
+            new_block["sig_output_bits"].append( bits )
+        else:
+            # The signal should be at least in the input/output/intern signal
+            print("ERROR, signal %s there isn't in the main module IO and intern signals." % sig)
+            exit(-1)
+
+    # INTERNAL SIGNALS
+    # Find signal to init in the new block, to do this
+    # we cycle on all in/out and find signals that are in the verilog block
+    # and don't are input or output 
+    for sig, bit in zip(module_info["sig_input_name"]+module_info["sig_output_name"]+module_info["sig_intern_name"],module_info["sig_input_bits"]+module_info["sig_output_bits"]+module_info["sig_intern_bits"]):
+        # If the input signal is not a io of the new block
+        if not sig in cmd_io:
+            # If the input signal is in the verilog block save it as 
+            # internal signal
+            if sig in cmd_verilog_block:
+                new_block["sig_intern_name"].append(sig)
+                new_block["sig_intern_bits"].append(bit)
+
+    # PARAMETER
+    for par,bit,value in  zip(module_info["parameter_name"],module_info["parameter_bits"],module_info["parameter_value"]):
+        # If the parameter is used in the verilog block we save this parameter
+        # in order to pass it in the new block
+        if par in cmd_verilog_block:
+            new_block["parameter_name"] = par
+            new_block["parameter_bits"] = bit
+            new_block["parameter_value"] = value
+
+
+    return new_block
+
+def CreateFtBlock(cmd_dict, block_name, module_info, indent):
+    ############################################################################################
+    # This function return the new block verilog and the instance of the new block
+    # to place in the original block.
+
+    # In newmod_info will be saved the module info dict 
+    newmod_info = CreateNewBlockInfo(cmd_dict, module_info)
+    newmod_info["module"] = block_name
+
+    # DATAFILE CREATION
+    datafile = GetFTModuleIoDeclaration(newmod_info, newmod_info, indent, 0)
+    for sig,bit in zip(newmod_info["sig_intern_name"],newmod_info["sig_intern_bits"]):
+        datafile +=  getIoPort(indent+"logic ",sig,bit,";\n")
+    datafile += newmod_info["verilog_block"]
+    datafile += "endmodule\n"
+    
+    # INSTANCE creation
+    instance = GetOrigInstance(newmod_info, block_name, ["",""], ["",""], ["",""], indent)
+
+    return [datafile, instance]
+            
+
+
+    
+def ElaborateHiddenTravulog(sv_filename, orig_module_info, ft_dir, template_dict):
+    #############################################################################################
+    # This function elaborate travulog code hidden in a verilog or sistemverilog file
+    # hidden travulog for command CREATE_FT_BLOCK appears like:
+    # //// CREATE_FT_BLOCK template_name block_name
+    # //// IN all input
+    # //// OUT all output
+    # //// END_CREATE_FT_BLOCK
+    # 
+    # This type of code is useful when designer have a verilog hardware description that
+    # should became fault tolerant. In this case Hidden Travulog don't modify verilog
+    # code but can be analyzed by this function to create a new FT block for example. 
+    # In this way any time that you apply a change in the original verilog, you could
+    # simulate you verilog and verify the behavior whitout delete Travulog code, then 
+    # running this function your FT structure is created.
+    fp = open(sv_filename,"r")
+    data_orig=fp.read()
+    tab="        "
+    data_orig=data_orig.replace("\t",tab)
+    
+    data_line = data_orig.split("\n")
+
+    data_elab=""
+    lineno=0
+    linemax=len(data_line)
+    HTKEY="////"
+    create_ft_block_dict={}
+    create_ft_block_instance={}
+    create_ft_block_datafile={}
+    declaration_begin_line=0
+    declaration_end_line=0
+    # This list contain begin line, end line and name of a new block
+    lines=[]
+
+
+    # Elaboration cycle
+    while lineno < linemax:
+        line= " ".join(data_line[lineno].strip().split()).strip()
+        if line.split(" ")[0] == "module":
+            declaration_begin_line = lineno
+        if line.split(" ")[0] == "logic":
+            declaration_end_line = lineno
+        
+        # La stringa ////  l'indice di una riga di Travulog
+        if line.split(" ")[0] == HTKEY:
+            
+            cmd=line.replace(HTKEY,"").strip()
+            
+            if "CREATE_FT_BLOCK" in cmd:
+                cmd_list = cmd.split(" ")
+                ###########################
+                # Controls
+                ###########################
+                # The first line should contain three word
+                if len(cmd_list)!= 3 :  # CREATE_FT_BLOCK template_name block_name
+                    print("ERROR line %d, CREATE_FT_BLOCK template_name block_name" % lineno)
+                    exit(-1)
+                if not cmd_list[1] in template_dict.keys():  # Errore se il template non e presente
+                    print("ERROR line %d template %s not found"%lineno,cmd_list[1])
+                    exit(-1)
+                ##########################
+                # Parsing
+                ##########################
+                block_name = cmd_list[2]
+                create_ft_block_dict[block_name]={}
+                create_ft_block_dict[block_name]["template_filename"] = template_dict[cmd_list[1]]
+                create_ft_block_dict[block_name]["start_line"]=lineno
+                # le linee di hidden travulog devono essere attaccate percui cerco 
+                # HTKEY nelle linee successive, devono infatti esserci gli ingressi e le uscite
+                lineno += 1
+                line= " ".join(data_line[lineno].strip().split()).strip()
+                # If this two variable are already false after cycle means that
+                # in out or both are not found in hidden travulog, this create an error
+                find_in=False  
+                find_out=False
+                current_saving=""
+                # Save travulog hidden command
+                while line.split(" ")[0] == HTKEY:
+                    if " IN " in line:
+                        current_saving="IN"
+                        find_in=True
+                        create_ft_block_dict[block_name]["IN"]=[]
+                    elif " OUT " in line:
+                        current_saving="OUT"
+                        find_out=True
+                        create_ft_block_dict[block_name]["OUT"]=[]
+                    else:
+                        if current_saving=="":
+                            break
+                    cmd_split = line.replace(HTKEY, "").strip().split(" ")
+                    if len(cmd_split) < 1:
+                        break
+                    if current_saving == "IN":
+                        for ingressi in cmd_split:
+                            if ingressi != "IN":
+                               create_ft_block_dict[block_name]["IN"].append(ingressi)
+                    if current_saving == "OUT":
+                        for ingressi in cmd_split:
+                            if ingressi != "OUT":
+                                create_ft_block_dict[block_name]["OUT"].append(ingressi)
+
+                    lineno +=1
+                    line= " ".join(data_line[lineno].strip().split()).strip()
+
+                # Verify that both input and output are given
+                if not find_in or not find_out or len(create_ft_block_dict[block_name]["IN"])<1 or len(create_ft_block_dict[block_name]["OUT"])<1:
+                    print("ERROR, line %d, hiddent travulog needs continuos statments"
+                            ", CREATE_FT_BLOCK needs input and output signal, "
+                            "you remember that IN and OUT need a space before and after"
+                            " to be recognized" % lineno)
+                    exit(-1)
+
+                # Save verilog block to use in new block 
+                create_ft_block_dict[block_name]["verilog_block"] = data_line[lineno]
+                lineno +=1
+                line= " ".join(data_line[lineno].strip().split()).strip()
+                while line.split(" ")[0] != HTKEY:
+                    create_ft_block_dict[block_name]["verilog_block"] += data_line[lineno] + "\n"
+                    lineno +=1
+                    line= " ".join(data_line[lineno].strip().split()).strip()
+
+                # Verify end key
+                if line.split(" ")[1] != "END_CREATE_FT_BLOCK":
+                    print("ERROR, line %d, at the end of the verilog block"
+                            " you should place END_CREATE_FT_BLOCK command" % lineno)
+                    exit(-1)
+            
+                # Create datafile and instance
+                create_ft_block_dict[block_name]["end_line"]=lineno
+                lines.append([create_ft_block_dict[block_name]["start_line"], lineno, block_name])
+                [datafile, instance] = CreateFtBlock(create_ft_block_dict[block_name], block_name, orig_module_info, tab)
+                create_ft_block_dict[block_name]["datafile"] = datafile
+                create_ft_block_dict[block_name]["instance"] = instance
+
+        lineno+=1
+    
+    ########################################################################
+    # Create the new file of original block module_info
+    ########################################################################
+    #print(" lines  dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+    # print(json.dumps(create_ft_block_dict,indent=4))
+    
+    lineno = 0
+    datafile = ""
+
+    # Copy the beginning of the file before IO declaration
+    while lineno < declaration_begin_line:
+        datafile += data_line[lineno] + "\n"
+        lineno +=1 
+    
+    # Add declaration and internal signals
+    datafile += GetFTModuleIoDeclaration(orig_module_info, [], tab, 1)
+
+    lineno = declaration_end_line + 1 
+    # Add all internal verilog and the instance of the new block if they exist
+    i=0
+    while lineno < len(data_line): 
+        if len(lines) > 0:
+            if i < len(lines) and lineno == lines[i][0]:
+                datafile += create_ft_block_dict[lines[i][2]]["instance"]
+                # Jump to the end of the new block declaration
+                lineno = lines[i][1]+1
+                i+=1
+        
+        datafile += data_line[lineno] + "\n"
+        lineno+=1
+    
+    # Create the new blocks
+    for module in create_ft_block_dict.keys():
+        fp = open(module+".sv","w")
+        fp.write(create_ft_block_dict[module][datafile])
+        fp.close()
+
+    
+
+    
+def NextHTLine(lines, lineno, key):
+    # Next Hidden Travulog Line
+    n=lineno
+    HTKEY=key
+    while n< len(lines):
+        line= " ".join(lines[lineno].strip().split()).strip()
+        if line.split(" ")[0] == HTKEY:
+            return [line,n] 
+        n+=1    
+    return [0,0]
+
+
+
+
+
+
+def GetElaboratedTravulog(template_filename, block_info, module_name, short_module_name, param_name):
     #############################################################################################
     # This function start from a template file that create a FT structure of a non 
     # FT block, in this file will be many uppercase variable that should be substitute by 
@@ -600,7 +1029,7 @@ def ElaborateFTTemplate(template_filename, block_info, module_name, param_name):
     data = data_orig.replace("MODULE_NAME",module_name)
     data = data.replace("PARAM_NAME", param_name)
     for key,value in zip(block_info.keys(), block_info.values()):
-        data = data.replace(key+"_MODNAME", value["module"])
+        data = data.replace(key+"_MODNAME", short_module_name)
 
     data_line = data.split("\n")
 
@@ -625,15 +1054,17 @@ def ElaborateFTTemplate(template_filename, block_info, module_name, param_name):
                 print("ERROR! PARAMETER_DECLARATION at line %d need the name of block to copy parameter" % lineno)
                 exit(-1)
         elif "DECLARATION_FOREACH" in line_strip:
-            # DECLARATION_FOREACH BLOCK IN_OUT
+            # DEyCLARATION_FOREACH BLOCK IN_OUT
             #    INOUT logic [2:0]BITINIT SIGNAME,
             # END_DECLARATION_FOREACH
 
-            if len(line_strip_split) == 3:
+            if len(line_strip_split) >= 3:
                 block=block_info[line_strip_split[1]]
                 inout=line_strip_split[2]
+                if len(line_strip_split) > 4:
+                    cmd2 = {line_strip_split[3]: line_strip_split[4:]}
                 [command, lineno]= GetInnerCommand(data_line, lineno, "END_DECLARATION_FOREACH")
-                data_elab += GetDeclarationForeach(block, inout, command, lineno, line_indent*" ")    
+                data_elab += GetDeclarationForeach(block, inout, command, cmd2, lineno, line_indent*" ")    
             else:
                 print("ERROR! DECLARATION_FOREACH at line %d needs block name and IN/OUT/IN_OUT option" % lineno)
                 print("LINE: %s" % line_strip_split)
@@ -731,9 +1162,3 @@ def ElaborateFTTemplate(template_filename, block_info, module_name, param_name):
 
 
     return data_elab
-
-    
-
-
-
-
