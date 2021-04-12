@@ -205,6 +205,8 @@ def GetFTModuleIoDeclaration( module_info, ft_sig_info, indent, ft=1):
     # Write parameter
     declaration+= GetParameterDef(module_info, indent)
     declaration += "( "
+    if module_info["module"] == "cv32e40p_if_pipeline":
+        print(module_info)
     
     isclock=0
     isrst_n=0
@@ -735,26 +737,56 @@ def CreateNewBlockInfo(cmd_dict, module_info):
 
     return new_block
 
-def CreateFtBlock(cmd_dict, block_name, module_info, indent):
+def CreateFtBlock(cmd_dict, block_name, module_info, out_dir, indent):
     ############################################################################################
     # This function return the new block verilog and the instance of the new block
     # to place in the original block.
+    # cmd_dict -> dictionary of the hidden travulog command
+    # block_name -> name of the new block to create
+    # module_info -> info about the main module in wich will be instanced the new block
+    # indent -> indentation of the new instance 
 
     # In newmod_info will be saved the module info dict 
     newmod_info = CreateNewBlockInfo(cmd_dict, module_info)
     newmod_info["module"] = block_name
 
-    # DATAFILE CREATION
+    ##### DATAFILE CREATION
     datafile = GetFTModuleIoDeclaration(newmod_info, newmod_info, indent, 0)
     for sig,bit in zip(newmod_info["sig_intern_name"],newmod_info["sig_intern_bits"]):
         datafile +=  getIoPort(indent+"logic ",sig,bit,";\n")
     datafile += newmod_info["verilog_block"]
     datafile += "endmodule\n"
     
-    # INSTANCE creation
-    instance = GetOrigInstance(newmod_info, block_name, ["",""], ["",""], ["",""], indent)
+    # We print datafile on file (not already ft)
+    fp = open(out_dir+"/"+block_name+".sv","w")
+    fp.write(create_ft_block_dict[block_name]["datafile"])
+    fp.close()
 
-    return [datafile, instance]
+    ##### FT block creation
+    # We use the template to transform the new block in a ft block
+    short_name = block_name.replace("cv32e40p_","")
+    param_name=short_name[:2].upper()
+    i=2
+    while i < len(short_name):
+        if short_name[i] == "_":
+            i+=1
+            param_name += short_name[i:i+2].upper()
+            i+=2
+        else:
+            i+=1
+
+    ft_datafile = GetElaboratedTravulog(cmd_dict["template_filename"], newmod_info, block_name, short_name, param_name)
+    # Print ft_datafile
+    fp = open(out_dir+"/"+block_name+"_ft.sv","w")
+    fp.write(ft_datafile)
+    fp.close()
+    
+    ##### INSTANCE creation
+    # Get module info in order to create new instance of the ft block
+    ft_module_info = GetModuleInfo(out_dir+"/"+block_name+"_ft.sv")
+    instance = GetOrigInstance(ft_module_info, block_name+"_ft", ["",""], ["",""], ["",""], indent)
+    
+    return instance
             
 
 
@@ -889,16 +921,18 @@ def ElaborateHiddenTravulog(sv_filename, orig_module_info, ft_dir, template_dict
                 # Create datafile and instance
                 create_ft_block_dict[block_name]["end_line"]=lineno
                 lines.append([create_ft_block_dict[block_name]["start_line"], lineno, block_name])
-                [datafile, instance] = CreateFtBlock(create_ft_block_dict[block_name], block_name, orig_module_info, tab)
-                create_ft_block_dict[block_name]["datafile"] = datafile
-                create_ft_block_dict[block_name]["instance"] = instance
+                ft_instance = CreateFtBlock(create_ft_block_dict[block_name], block_name, orig_module_info, ft_dir,tab)
+                create_ft_block_dict[block_name]["instance"] = ft_instance
+
+
+                # Now we use template to create the ft block to instantiate
+
 
         lineno+=1
     
     ########################################################################
     # Create the new file of original block module_info
     ########################################################################
-    #print(" lines  dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
     # print(json.dumps(create_ft_block_dict,indent=4))
     
     lineno = 0
@@ -926,13 +960,8 @@ def ElaborateHiddenTravulog(sv_filename, orig_module_info, ft_dir, template_dict
         datafile += data_line[lineno] + "\n"
         lineno+=1
     
-    # Create the new blocks
-    for module in create_ft_block_dict.keys():
-        fp = open(module+".sv","w")
-        fp.write(create_ft_block_dict[module][datafile])
-        fp.close()
-
-    
+    print datafile
+    return datafile
 
     
 def NextHTLine(lines, lineno, key):
@@ -1159,6 +1188,4 @@ def GetElaboratedTravulog(template_filename, block_info, module_name, short_modu
             data_elab+=line + "\n"
 
         lineno+=1
-
-
     return data_elab
