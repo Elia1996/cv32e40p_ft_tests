@@ -24,25 +24,23 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-import cv32e40p_ft_pkg::*;
+import cv32e40p_pkg2_ft::*;
 
 module cv32e40p_aligner_ft
-#(
-)
 (
 
         // compressed decoder input output
-        input logic [2:0] fetch_valid_i,
-        input logic [2:0] if_valid_i,
-        input logic [2:0][31:0] fetch_rdata_i,
-        input logic [2:0][31:0] branch_addr_i,
-        input logic [2:0] branch_i,
-        input logic [2:0][31:0] hwlp_addr_i,
-        input logic [2:0] hwlp_update_pc_i,
-        output logic [2:0] aligner_ready_o,
-        output logic [2:0][31:0] instr_aligned_o,
-        output logic [2:0] instr_valid_o,
-        output logic [2:0][31:0] pc_o,
+        input logic [2:0]                   fetch_valid_i,
+        input logic [2:0]                   if_valid_i,
+        input logic [2:0]          [31:0]   fetch_rdata_i,
+        input logic [2:0]          [31:0]   branch_addr_i,
+        input logic [2:0]                   branch_i,
+        input logic [2:0]          [31:0]   hwlp_addr_i,
+        input logic [2:0]                   hwlp_update_pc_i,
+        output logic [2:0]                   aligner_ready_o,
+        output logic [2:0]          [31:0]   instr_aligned_o,
+        output logic [2:0]                   instr_valid_o,
+        output logic [2:0]          [31:0]   pc_o,
 
         input logic clk,
         input logic rst_n,                
@@ -54,10 +52,10 @@ module cv32e40p_aligner_ft
         output logic err_corrected_o
 );
         // Signals out to each compressed decoder block to be voted
-        logic [2:0] aligner_ready_o_to_vote ;
-        logic [2:0][31:0] instr_aligned_o_to_vote ;
-        logic [2:0] instr_valid_o_to_vote ;
-        logic [2:0][31:0] pc_o_to_vote ;
+        logic [2:0]                   aligner_ready_o_to_vote ;
+        logic [2:0]          [31:0]   instr_aligned_o_to_vote ;
+        logic [2:0]                   instr_valid_o_to_vote ;
+        logic [2:0]          [31:0]   pc_o_to_vote ;
 
         // Error signals
         logic [2:0] aligner_ready_o_block_err ;
@@ -73,48 +71,54 @@ module cv32e40p_aligner_ft
 
         // variable for generate cycle
         generate
-                case (ALIG_FT)
+                case (AL_FT)
                         0 : begin
                                 cv32e40p_aligner aligner_no_ft
                                 (
-                                        .clk( clk ),
-                                        .rst_n( rst_n ),
-                                        .fetch_valid_i( fetch_valid_i[0] ),
-                                        .if_valid_i( if_valid_i[0] ),
-                                        .fetch_rdata_i( fetch_rdata_i[0] ),
-                                        .branch_addr_i( branch_addr_i[0] ),
-                                        .branch_i( branch_i[0] ),
-                                        .hwlp_addr_i( hwlp_addr_i[0] ),
-                                        .hwlp_update_pc_i( hwlp_update_pc_i[0] ),
-                                        .aligner_ready_o( aligner_ready_o[0] ),
-                                        .instr_aligned_o( instr_aligned_o[0] ),
-                                        .instr_valid_o( instr_valid_o[0] ),
-                                        .pc_o( pc_o[0] )
+                                        // Input ports of aligner_no_ft
+                                        .clk                    (  clk                              ),
+                                        .rst_n                  (  rst_n                            ),
+                                        .fetch_valid_i          (  fetch_valid_i[0]                 ),
+                                        .if_valid_i             (  if_valid_i[0]                    ),
+                                        .fetch_rdata_i          (  fetch_rdata_i[0]                 ),
+                                        .branch_addr_i          (  branch_addr_i[0]                 ),
+                                        .branch_i               (  branch_i[0]                      ),
+                                        .hwlp_addr_i            (  hwlp_addr_i[0]                   ),
+                                        .hwlp_update_pc_i       (  hwlp_update_pc_i[0]              ),
+
+                                        // Output ports of aligner_no_ft
+                                        .aligner_ready_o        (  aligner_ready_o[0]               ),
+                                        .instr_aligned_o        (  instr_aligned_o[0]               ),
+                                        .instr_valid_o          (  instr_valid_o[0]                 ),
+                                        .pc_o                   (  pc_o[0]                          )
                                 );
                                 // error
                                 assign block_err_detected = {1'b0,1'b0,1'b0};
                         end
                         default : begin
                                 // Input case 
-                                case (ALIG_TIN) 
+                                case (AL_TIN) 
                                         0 : begin // Single input
                                                 genvar i;
                                                 for (i=0; i<3; i=i+1)  begin 
                                                         cv32e40p_aligner aligner_single_input
                                                         (
-                                                                .clk( clk ),
-                                                                .rst_n( rst_n ),
-                                                                .fetch_valid_i( fetch_valid_i[0] ),
-                                                                .if_valid_i( if_valid_i[0] ),
-                                                                .fetch_rdata_i( fetch_rdata_i[0] ),
-                                                                .branch_addr_i( branch_addr_i[0] ),
-                                                                .branch_i( branch_i[0] ),
-                                                                .hwlp_addr_i( hwlp_addr_i[0] ),
-                                                                .hwlp_update_pc_i( hwlp_update_pc_i[0] ),
-                                                                .aligner_ready_o( aligner_ready_o_to_vote[i] ),
-                                                                .instr_aligned_o( instr_aligned_o_to_vote[i] ),
-                                                                .instr_valid_o( instr_valid_o_to_vote[i] ),
-                                                                .pc_o( pc_o_to_vote[i] )
+                                                                // Input ports of aligner_single_input
+                                                                .clk                    (  clk                              ),
+                                                                .rst_n                  (  rst_n                            ),
+                                                                .fetch_valid_i          (  fetch_valid_i[0]                 ),
+                                                                .if_valid_i             (  if_valid_i[0]                    ),
+                                                                .fetch_rdata_i          (  fetch_rdata_i[0]                 ),
+                                                                .branch_addr_i          (  branch_addr_i[0]                 ),
+                                                                .branch_i               (  branch_i[0]                      ),
+                                                                .hwlp_addr_i            (  hwlp_addr_i[0]                   ),
+                                                                .hwlp_update_pc_i       (  hwlp_update_pc_i[0]              ),
+
+                                                                // Output ports of aligner_single_input
+                                                                .aligner_ready_o        (  aligner_ready_o_to_vote[i]       ),
+                                                                .instr_aligned_o        (  instr_aligned_o_to_vote[i]       ),
+                                                                .instr_valid_o          (  instr_valid_o_to_vote[i]         ),
+                                                                .pc_o                   (  pc_o_to_vote[i]                  )
                                                         );
                                         end
                                         default : begin // Triplicated input
@@ -122,29 +126,32 @@ module cv32e40p_aligner_ft
                                                 for (i=0; i<3; i=i+1)  begin 
                                                         cv32e40p_aligner aligner_tiple_input
                                                         (
-                                                                .clk( clk ),
-                                                                .rst_n( rst_n ),
-                                                                .fetch_valid_i( fetch_valid_i[i] ),
-                                                                .if_valid_i( if_valid_i[i] ),
-                                                                .fetch_rdata_i( fetch_rdata_i[i] ),
-                                                                .branch_addr_i( branch_addr_i[i] ),
-                                                                .branch_i( branch_i[i] ),
-                                                                .hwlp_addr_i( hwlp_addr_i[i] ),
-                                                                .hwlp_update_pc_i( hwlp_update_pc_i[i] ),
-                                                                .aligner_ready_o( aligner_ready_o_to_vote[i] ),
-                                                                .instr_aligned_o( instr_aligned_o_to_vote[i] ),
-                                                                .instr_valid_o( instr_valid_o_to_vote[i] ),
-                                                                .pc_o( pc_o_to_vote[i] )
+                                                                // Input ports of aligner_tiple_input
+                                                                .clk                    (  clk                              ),
+                                                                .rst_n                  (  rst_n                            ),
+                                                                .fetch_valid_i          (  fetch_valid_i[i]                 ),
+                                                                .if_valid_i             (  if_valid_i[i]                    ),
+                                                                .fetch_rdata_i          (  fetch_rdata_i[i]                 ),
+                                                                .branch_addr_i          (  branch_addr_i[i]                 ),
+                                                                .branch_i               (  branch_i[i]                      ),
+                                                                .hwlp_addr_i            (  hwlp_addr_i[i]                   ),
+                                                                .hwlp_update_pc_i       (  hwlp_update_pc_i[i]              ),
+
+                                                                // Output ports of aligner_tiple_input
+                                                                .aligner_ready_o        (  aligner_ready_o_to_vote[i]       ),
+                                                                .instr_aligned_o        (  instr_aligned_o_to_vote[i]       ),
+                                                                .instr_valid_o          (  instr_valid_o_to_vote[i]         ),
+                                                                .pc_o                   (  pc_o_to_vote[i]                  )
                                                         );
                                         end
                                 endcase        
 
                                  // Voter for TOVOTE signal, triple voter if
-                                 // ALIG_TOUT[0] == 1
+                                 // AL_TOUT[0] == 1
                                  cv32e40p_conf_voter
                                  #(
                                           .L1(1),
-                                          .TOUT(ALIG_TOUT[0])
+                                          .TOUT(AL_TOUT[0])
                                  ) voter_aligner_ready_o_0
                                  (
                                           .to_vote_i( aligner_ready_o_to_vote ),
@@ -156,11 +163,11 @@ module cv32e40p_aligner_ft
                                  );
                                  
                                  // Voter for TOVOTE signal, triple voter if
-                                 // ALIG_TOUT[1] == 1
+                                 // AL_TOUT[1] == 1
                                  cv32e40p_conf_voter
                                  #(
                                           .L1(32),
-                                          .TOUT(ALIG_TOUT[1])
+                                          .TOUT(AL_TOUT[1])
                                  ) voter_instr_aligned_o_1
                                  (
                                           .to_vote_i( instr_aligned_o_to_vote ),
@@ -172,11 +179,11 @@ module cv32e40p_aligner_ft
                                  );
                                  
                                  // Voter for TOVOTE signal, triple voter if
-                                 // ALIG_TOUT[2] == 1
+                                 // AL_TOUT[2] == 1
                                  cv32e40p_conf_voter
                                  #(
                                           .L1(1),
-                                          .TOUT(ALIG_TOUT[2])
+                                          .TOUT(AL_TOUT[2])
                                  ) voter_instr_valid_o_2
                                  (
                                           .to_vote_i( instr_valid_o_to_vote ),
@@ -188,11 +195,11 @@ module cv32e40p_aligner_ft
                                  );
                                  
                                  // Voter for TOVOTE signal, triple voter if
-                                 // ALIG_TOUT[3] == 1
+                                 // AL_TOUT[3] == 1
                                  cv32e40p_conf_voter
                                  #(
                                           .L1(32),
-                                          .TOUT(ALIG_TOUT[3])
+                                          .TOUT(AL_TOUT[3])
                                  ) voter_pc_o_3
                                  (
                                           .to_vote_i( pc_o_to_vote ),
@@ -232,11 +239,11 @@ module cv32e40p_aligner_ft
                                         // used
                                         cv32e40p_breakage_monitor
                                         #(
-                                                .DECREMENT(ALIG_DECREMENT),
-                                                .INCREMENT(ALIG_INCREMENT),
-                                                .BREAKING_THRESHOLD(ALIG_BREAKING_THRESHOLD),
-                                                .COUNT_BIT(ALIG_COUNT_BIT),
-                                                .INC_DEC_BIT(ALIG_INC_DEC_BIT)
+                                                .DECREMENT(AL_DECREMENT),
+                                                .INCREMENT(AL_INCREMENT),
+                                                .BREAKING_THRESHOLD(AL_BREAKING_THRESHOLD),
+                                                .COUNT_BIT(AL_COUNT_BIT),
+                                                .INC_DEC_BIT(AL_INC_DEC_BIT)
                                         ) breakage_monitor
                                         (
                                                 .rst_n(rst_n),

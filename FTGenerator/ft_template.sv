@@ -24,12 +24,10 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-import cv32e40p_ft_pkg::*;
+import cv32e40p_pkg2_ft::*;
 
 module MODULE_NAME_ft
-#(
 	PARAMETER_DECLARATION BLOCK
-)
 (
 
 	// compressed decoder input output
