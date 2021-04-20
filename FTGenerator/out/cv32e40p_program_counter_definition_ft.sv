@@ -212,11 +212,11 @@ module cv32e40p_program_counter_definition_ft
                                                         | err_corrected[2];
                                 
                                 assign block_err_detected[0] =  branch_addr_n_block_err[0]
-                                                              | csr_mtvec_init_o_block_err[0];
+                                | csr_mtvec_init_o_block_err[0]; 
                                 assign block_err_detected[1] =  branch_addr_n_block_err[1]
-                                                              | csr_mtvec_init_o_block_err[1];
+                                | csr_mtvec_init_o_block_err[1]; 
                                 assign block_err_detected[2] =  branch_addr_n_block_err[2]
-                                                              | csr_mtvec_init_o_block_err[2];
+                                | csr_mtvec_init_o_block_err[2]; 
                                         
                                 genvar m;
                                 for (m=0;  m<3 ; m=m+1) begin 

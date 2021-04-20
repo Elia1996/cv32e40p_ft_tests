@@ -296,26 +296,26 @@ module cv32e40p_if_pipeline_ft
                                                         | err_corrected[2];
                                 
                                 assign block_err_detected[0] =  instr_valid_id_o_block_err[0]
-                                                              | instr_rdata_id_o_block_err[0]
-                                                              | is_fetch_failed_o_block_err[0]
-                                                              | pc_id_o_block_err[0]
-                                                              | is_compressed_id_o_block_err[0]
-                                                              | illegal_c_insn_id_o_block_err[0]
-                                                              | if_valid_block_err[0];
+                                | instr_rdata_id_o_block_err[0]
+                                | is_fetch_failed_o_block_err[0]
+                                | pc_id_o_block_err[0]
+                                | is_compressed_id_o_block_err[0]
+                                | illegal_c_insn_id_o_block_err[0]
+                                | if_valid_block_err[0]; 
                                 assign block_err_detected[1] =  instr_valid_id_o_block_err[1]
-                                                              | instr_rdata_id_o_block_err[1]
-                                                              | is_fetch_failed_o_block_err[1]
-                                                              | pc_id_o_block_err[1]
-                                                              | is_compressed_id_o_block_err[1]
-                                                              | illegal_c_insn_id_o_block_err[1]
-                                                              | if_valid_block_err[1];
+                                | instr_rdata_id_o_block_err[1]
+                                | is_fetch_failed_o_block_err[1]
+                                | pc_id_o_block_err[1]
+                                | is_compressed_id_o_block_err[1]
+                                | illegal_c_insn_id_o_block_err[1]
+                                | if_valid_block_err[1]; 
                                 assign block_err_detected[2] =  instr_valid_id_o_block_err[2]
-                                                              | instr_rdata_id_o_block_err[2]
-                                                              | is_fetch_failed_o_block_err[2]
-                                                              | pc_id_o_block_err[2]
-                                                              | is_compressed_id_o_block_err[2]
-                                                              | illegal_c_insn_id_o_block_err[2]
-                                                              | if_valid_block_err[2];
+                                | instr_rdata_id_o_block_err[2]
+                                | is_fetch_failed_o_block_err[2]
+                                | pc_id_o_block_err[2]
+                                | is_compressed_id_o_block_err[2]
+                                | illegal_c_insn_id_o_block_err[2]
+                                | if_valid_block_err[2]; 
                                         
                                 genvar m;
                                 for (m=0;  m<3 ; m=m+1) begin 

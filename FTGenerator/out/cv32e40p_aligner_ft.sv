@@ -218,17 +218,17 @@ module cv32e40p_aligner_ft
                                                         | err_corrected[2];
                                 
                                 assign block_err_detected[0] =  aligner_ready_o_block_err[0]
-                                                              | instr_aligned_o_block_err[0]
-                                                              | instr_valid_o_block_err[0]
-                                                              | pc_o_block_err[0];
+                                | instr_aligned_o_block_err[0]
+                                | instr_valid_o_block_err[0]
+                                | pc_o_block_err[0]; 
                                 assign block_err_detected[1] =  aligner_ready_o_block_err[1]
-                                                              | instr_aligned_o_block_err[1]
-                                                              | instr_valid_o_block_err[1]
-                                                              | pc_o_block_err[1];
+                                | instr_aligned_o_block_err[1]
+                                | instr_valid_o_block_err[1]
+                                | pc_o_block_err[1]; 
                                 assign block_err_detected[2] =  aligner_ready_o_block_err[2]
-                                                              | instr_aligned_o_block_err[2]
-                                                              | instr_valid_o_block_err[2]
-                                                              | pc_o_block_err[2];
+                                | instr_aligned_o_block_err[2]
+                                | instr_valid_o_block_err[2]
+                                | pc_o_block_err[2]; 
                                         
                                 genvar m;
                                 for (m=0;  m<3 ; m=m+1) begin 

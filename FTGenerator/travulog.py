@@ -314,7 +314,7 @@ def GetOpForeach(line_strip, block_obj, inout, op, sig, lineno, indent):
     i=0
     while i < len(words):
         if words[i] == "OP_FOREACH":
-            i+=5
+            i+=4
             names=[]
             bits=[]
             if inout == "IN" or inout == "IN_OUT":
@@ -327,17 +327,30 @@ def GetOpForeach(line_strip, block_obj, inout, op, sig, lineno, indent):
                 print("ERROR at line %d, %s is wrong, only IN, OUT or IN_OUT can be used "%lineno, inout)
                 exit(-1)
             indent_word = len(unroll.strip())*" "
-            operation= " " + sig.replace("SIGNAME",names[0]) + "\n"
+            if op == "//" and len(unroll.strip())>=2:
+                indent_word = (len(unroll.strip())-2)*" "
+            else:
+                indent_word = ""
+                
+            indent_word = indent + indent_word
+            end_str="\n"
+            if len(sig.replace("SIGNAME",names[0]))*len(names) < 50:
+                end_str = ""
+                indent_word = ""
+            
+            operation= " " + sig.replace("SIGNAME",names[0]).replace("INDEX","0") + end_str
             cnt=1
             while cnt < len(names)-1:
-                operation += indent + indent_word+ op + " " + sig.replace("SIGNAME",names[cnt]) + "\n"
+                operation += indent_word+ op + " " + sig.replace("SIGNAME",names[cnt]).replace("INDEX",str(cnt)) + end_str
                 cnt+=1
-            operation += indent + indent_word+ op + " " + sig.replace("SIGNAME",names[cnt]) + ";\n"
+            operation += indent_word+ op + " " + sig.replace("SIGNAME",names[cnt]).replace("INDEX",str(cnt)) 
             unroll += operation
 
         else:
             unroll += words[i] + " "
         i+=1
+    
+    unroll += "\n"
 
     return unroll
 
@@ -487,6 +500,8 @@ class travulog:
         # substitute all BLOCK_MODNAME with corrsipetive module name
         for mod_ID,mod_obj in zip(sf.mod_obj_dict.keys(), sf.mod_obj_dict.values()):
             data = data.replace(mod_ID+"_MODNAME", mod_obj.GetModuleNameNoPrefix())
+            data = data.replace("SIG_NUM-"+mod_ID +"-OUT", str(len(mod_obj.GetOutputSigNamesList())-1))
+            data = data.replace("SIG_NUM-"+mod_ID +"-IN", str(len(mod_obj.GetInputSigNamesList())-1))
 
         data_line = data.split("\n")
 
@@ -601,9 +616,10 @@ class travulog:
                     if line_strip_split[i] == "OP_FOREACH":
                         if i+4 < len(line_strip_split):
                             cmd = line_strip_split[i:i+5]
+
                             i+=4
                         else:
-                            print("ERROR! OP_FOREACH at line %d, some arguments are missing '%s'" % lineno,line_strip)
+                            print("ERROR! OP_FOREACH at line %d, some arguments are missing '%s'" % (lineno,line_strip))
                             exit(-1)
                     i+=1
 

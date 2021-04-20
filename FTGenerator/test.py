@@ -10,9 +10,10 @@ DIR="/media/tesla/Storage/Data/Scrivania/AllProject/Fare/Tesi/Esecuzione_tesi/"
 main_mod_name = "cv32e40p_if_stage_no_ft.sv"
 input_dir = DIR + "/cv32e40p/rtl"
 output_dir = DIR + "/cv32e40p_ft_tests/FTGenerator/out"
-template_fname_dict = {"ft_template" : DIR+"cv32e40p_ft_tests/FTGenerator/ft_template.sv"}
-template_parameters_filename_dict = {"ft_template" : DIR+"cv32e40p_ft_tests/FTGenerator/ft_template_parameters.sv"}
-package_template_filename = DIR+"cv32e40p_ft_tests/FTGenerator/cv32e40p_pkg2.sv"
+templates_dir = DIR+"cv32e40p_ft_tests/FTGenerator/templates/"
+template_fname_dict = {"ft_template" : templates_dir+"ft_template.sv"}
+template_parameters_filename_dict = {"ft_template" : templates_dir+"ft_template_parameters.sv"}
+package_template_filename = templates_dir+"cv32e40p_pkg2.sv"
 module_prefix = "cv32e40p_"
 indent = "        "
 

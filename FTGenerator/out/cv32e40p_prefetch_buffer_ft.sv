@@ -275,20 +275,20 @@ module cv32e40p_prefetch_buffer_ft
                                                         | err_corrected[2];
                                 
                                 assign block_err_detected[0] =  fetch_valid_o_block_err[0]
-                                                              | fetch_rdata_o_block_err[0]
-                                                              | instr_req_o_block_err[0]
-                                                              | instr_addr_o_block_err[0]
-                                                              | busy_o_block_err[0];
+                                | fetch_rdata_o_block_err[0]
+                                | instr_req_o_block_err[0]
+                                | instr_addr_o_block_err[0]
+                                | busy_o_block_err[0]; 
                                 assign block_err_detected[1] =  fetch_valid_o_block_err[1]
-                                                              | fetch_rdata_o_block_err[1]
-                                                              | instr_req_o_block_err[1]
-                                                              | instr_addr_o_block_err[1]
-                                                              | busy_o_block_err[1];
+                                | fetch_rdata_o_block_err[1]
+                                | instr_req_o_block_err[1]
+                                | instr_addr_o_block_err[1]
+                                | busy_o_block_err[1]; 
                                 assign block_err_detected[2] =  fetch_valid_o_block_err[2]
-                                                              | fetch_rdata_o_block_err[2]
-                                                              | instr_req_o_block_err[2]
-                                                              | instr_addr_o_block_err[2]
-                                                              | busy_o_block_err[2];
+                                | fetch_rdata_o_block_err[2]
+                                | instr_req_o_block_err[2]
+                                | instr_addr_o_block_err[2]
+                                | busy_o_block_err[2]; 
                                         
                                 genvar m;
                                 for (m=0;  m<3 ; m=m+1) begin 
