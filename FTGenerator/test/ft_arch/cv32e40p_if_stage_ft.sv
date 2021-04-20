@@ -256,7 +256,7 @@ module cv32e40p_if_stage_ft
 
                 // Output ports of aligner_ft
                 .aligner_ready_o        (  aligner_ready                    ),
-                .instr_aligned_o        (  { instr_aligned[0][0], instr_aligned[1][0], instr_aligned[2][0]}  ),
+                .instr_aligned_o        (  instr_aligned                    ),
                 .instr_valid_o          (  instr_valid                      ),
                 .pc_o                   (  pc_if_o                          ),
 

@@ -6,7 +6,6 @@
         // TOUT is referred to output signal in order of definition
         //
         // OP_FOREACH BLOCK OUT // TOUT[INDEX]-refers-to->>SIGNAME
-
 	parameter int PARAM_NAME_TOUT [SIG_NUM-BLOCK-OUT:0] = { OP_FOREACH BLOCK OUT , 0  };
 
 	// Parameter for breakage monitors

@@ -159,8 +159,12 @@ class htravulog:
         
         instance_name = md_ft_module_obj.GetModuleNameNoPrefix()
 
+
         #### Create instance
         instance = md_ft_module_obj.GetInstance( instance_name, indent)
+        
+        #### Set new internal sig in the global variable
+        sf.FindAndSetInternSigDictFromInstance(md_ft_module_obj)
        
         return instance
 
@@ -262,10 +266,36 @@ class htravulog:
         
         instance_name = md_ft_module_obj.GetModuleNameNoPrefix()
 
+
+        #### Set new internal sig in the global variable
+        sf.FindAndSetInternSigDictFromInstance(md_ft_module_obj)
+        
         #### Create instance
         instance = md_ft_module_obj.GetInstance( instance_name, indent_int)
+        
 
         return instance
+
+    def GetSigFromStr(sf, string):
+        stringa = string.split("[")[0]
+        stringa = stringa.replace("{","")
+        stringa = stringa.strip()
+        return stringa
+
+    def FindAndSetInternSigDictFromInstance(sf, md_module_obj):
+        sig_name_bits = md_module_obj.GetAllConnectionSigNameAndBits()
+        for sig_str, bits in zip(sig_name_bits[0], sig_name_bits[1]):
+            sig = sf.GetSigFromStr(sig_str)
+            # If the signal isn't in the IO we set it as internal
+            if not sig in sf.md_main_block_obj.GetAllIoSigName():
+                if not sig in sf.md_main_block_obj.GetInternSigNamesList():
+                    if not sig in sf.new_internal_sig.keys():
+                        sf.new_internal_sig[sig] = [bits, 0]
+                    else:
+                        sf.new_internal_sig[sig][1] += 1
+                else:
+                    if not sig in sf.new_internal_sig.keys():
+                        sf.new_internal_sig[sig] = [bits, 0]
 
 
 
@@ -312,7 +342,6 @@ class htravulog:
         # this signal in order to connect it to signals vector and so use gived index
         md_ft_module_obj.Analyze(md_obj)
         #print(json.dumps(ft_module_info,indent=4))
-        #exit(-1)
         
         #### SET DIFF signals connnections
         if ft_sig_index != "":
@@ -376,6 +405,7 @@ class htravulog:
         lines=[]
         ft_no_index_list = ["clk","rst_n"] 
         sf.block_cnt = 0
+        sf.new_internal_sig = {}
         
         sf.package_datafile = ""
 
@@ -706,9 +736,19 @@ class htravulog:
             datafile += data_line[sf.lineno] + "\n"
             sf.lineno +=1
 
+        sf.md_main_block_obj.DeleteInternSigs()
+        for sig, bits_num in zip(sf.new_internal_sig.keys(), sf.new_internal_sig.values()):
+            bits = bits_num[0]
+            num = bits_num[1]
+            if num != 0:
+                bits["N1UP"] = num
+                bits["N1DW"] = 0
+            sf.md_main_block_obj.AppendInternSig(sig, bits)
+
+        sf.new_internal_sig
         # Add declaration and internal signals
         datafile += "module " + sf.md_main_block_obj.GetModuleName()+ "_ft" + "\n"
-        datafile += sf.md_main_block_obj.GetDeclaration(0, {"N1UP":2 , "N1DW":0})
+        datafile += sf.md_main_block_obj.GetDeclaration(0, {"N1UP":2 , "N1DW":0}, ft_no_index_list)
 
         sf.lineno = declaration_end_line + 1
         # Add all internal verilog and the instance of the new block if they exist

@@ -92,7 +92,7 @@ def GetBits(string):
             print("ERROR in GetBits, more then two dimension not are supported")
             exit(-1)
     else:
-        return {"N0UP":"1", "N0DW":"0" }
+        return {"N0UP":"0", "N0DW":"0" }
 
 
 def GetParamBase(name_or_list):
@@ -158,14 +158,14 @@ def CreateBitsDefinition(bits_dict, signal_type=""):
     else:
         bit_def_string = ""
     if "N1UP" in element_list:
-        if not (bits_dict["N1UP"] == "1" and bits_dict["N1DW"] == "0"):
+        if not (bits_dict["N1UP"] == "0" and bits_dict["N1DW"] == "0"):
             bit_def_string += "{:^9}".format("["+str(bits_dict["N1UP"])+":"+str(bits_dict["N1DW"])+"]")
         else:
             bit_def_string += " "*9
     else:
         bit_def_string += " "*9
     if "N0UP" in element_list:
-        if not (bits_dict["N0UP"] == "1" and bits_dict["N0DW"] == "0"):
+        if not (bits_dict["N0UP"] == "0" and bits_dict["N0DW"] == "0"):
             bit_def_string += "{:^9}".format("["+str(bits_dict["N0UP"])+":"+str(bits_dict["N0DW"])+"]")
         else:
             bit_def_string += " "*9
@@ -178,7 +178,6 @@ def CreateBitsDefinition(bits_dict, signal_type=""):
 class moddata:
     def __init__(sf, filename = "", module_prefix="", indent="        "):
         sf.filename = filename
-        sf.modinfo=0
         sf.indent=indent
         sf.mod_prefix = module_prefix
         sf.IN_ID = "IN"
@@ -212,6 +211,10 @@ class moddata:
 
     def SetModuleName(sf, module_name):
         sf.modinfo["module"] = module_name
+
+    def DeleteInternSigs(sf):
+        sf.modinfo["sig_intern_name"] = []
+        sf.modinfo["sig_intern_bits"] = []
         
     def SetInputPortConnections(sf, input_port_connection_list):
         if type(input_port_connection_list) != list :
@@ -509,9 +512,23 @@ class moddata:
     def GetAllIoSigName(sf):
         return sf.GetInputSigNamesList() + sf.GetOutputSigNamesList() 
 
+    def GetAllIoSigBits(sf):
+        return sf.GetInputSigBitsList() + sf.GetOutputSigBitsList() 
+
     def GetAllSigName(sf):
         return sf.GetInputSigNamesList() + sf.GetOutputSigNamesList() + sf.GetInternSigNamesList() 
 
+    def GetAllConnectionSigNameAndBits(sf):
+        conn_list = sf.input_port_connection_list
+        conn_list += sf.output_port_connection_list
+        conn_list += sf.input_diff_port_connection_list
+        conn_list += sf.output_diff_port_connection_list
+        bit_list = sf.GetInputSigBitsList()
+        bit_list += sf.GetOutputSigBitsList()
+        bit_list += sf.GetInputSigDiffBitsList()
+        bit_list += sf.GetOutputSigDiffBitsList()
+       
+        return [conn_list, bit_list]
 
     def GetSigData(sf, signal_name):
         """ Return data related to a signal, only bits and dame at the moment
@@ -562,8 +579,77 @@ class moddata:
     def GetParamBaseNoPrefix(sf):
         return GetParamBase(sf.GetModuleNameNoPrefix())
 
+    def AppendInternSig(sf, name, bits):
+        sf.modinfo["sig_intern_name"].append(name)
+        sf.VerifyBitsDict(bits)
+        sf.modinfo["sig_intern_bits"].append(bits)
+
+    def VerifyBitsDict(sf, bits_dict):
+        if type(bits_dict) != dict:
+            print("Error in AppendIntern, bits_dict should be a list")
+        element_list = []
+        for key in bits_dict.keys():
+            # only N0 and N1 supported at the moment
+            if key != "N0UP" and key!="N0DW" and key!="N1UP" and key!="N1DW":
+                print("ERROR in  CreateBitsDefinition, key in bits_dict not suppoted (%s)" % key)
+                exit(-1)
+            element_list.append(key)
+
+        # Now the order will be ['N0DW', 'N0UP', 'N1DW', 'N1UP']
+        if "N0UP" in element_list and not "N0DW" in element_list:
+            print("ERROR in CreateBitsDefinition, N0DW is needed")
+            exit(-1)
+        if  "N0DW" in element_list and not "N0UP" in element_list:
+            print("ERROR in CreateBitsDefinition, N0UP is needed")
+            exit(-1)
+        if "N1UP" in element_list and not "N1DW" in element_list:
+            print("ERROR in CreateBitsDefinition, N1DW is needed")
+            exit(-1)
+        if  "N1DW" in element_list and not "N1UP" in element_list:
+            print("ERROR in CreateBitsDefinition, N1UP is needed")
+            exit(-1)
+
     
     def GetPortIoFromList(sf, sig_name_list, ending=False, change_bit=False, indent_level=1):
+        """ Return a string with port definition
+        sig_name_list  -> it is a list of signal belonging to this object
+            , the signal in this list will be init as verilog port declaration
+        ending -> il false a ",\n" is placed at the end of each line, il True
+            the last declaration have only "\n" string at the end
+        change_bit -> this option is used to change the number of bit of the
+            signals, the order of the bits are
+             input logic [N1UP:N1DW] [N0UP:N0DW] sig  [N3UP:N3DW] [N2UP:N2DW]
+            so change_bit should be a dictionary like this:
+                {"N1UP":2 , "N1DW":0}
+            If the signal was "input logic [31:0] sig1" it became:
+                input logic [2:0] [31:0] sig1
+        indent_level -> is a number that indicate the indentation level to use
+        """
+        
+        #### Controls
+        if type(sig_name_list)!=list:
+            print("ERROR in GetPortIo, sig_name_list should be a list of signals")
+            exit(-1)
+        if change_bit != False and type(change_bit)!= dict:
+            element_list.append(key)
+
+        # Now the order will be ['N0DW', 'N0UP', 'N1DW', 'N1UP']
+        if "N0UP" in element_list and not "N0DW" in element_list:
+            print("ERROR in VerifyBitsDict, N0DW is needed")
+            exit(-1)
+        if  "N0DW" in element_list and not "N0UP" in element_list:
+            print("ERROR in VerifyBitsDict, N0UP is needed")
+            exit(-1)
+        if "N1UP" in element_list and not "N1DW" in element_list:
+            print("ERROR in VerifyBitsDict, N1DW is needed")
+            exit(-1)
+        if  "N1DW" in element_list and not "N1UP" in element_list:
+            print("ERROR in VerifyBitsDict, N1UP is needed")
+            exit(-1)
+
+
+    
+    def GetPortIoFromList(sf, sig_name_list, ending=False, change_bit=False, indent_level=1, override = False):
         """ Return a string with port definition
         sig_name_list  -> it is a list of signal belonging to this object
             , the signal in this list will be init as verilog port declaration
@@ -602,7 +688,9 @@ class moddata:
                 bit_dict = sf.GetInputSigBitsList()[bit_list_index]
                 if change_bit != False:
                     for bit_key in change_bit.keys():
-                        bit_dict[bit_key] = change_bit[bit_key]
+                        if not ( not override and bit_key in bit_dict.keys() ):
+                            bit_dict[bit_key] = change_bit[bit_key]
+
                 
                 # At the moment only logic input are supported
                 line_to_create += CreateBitsDefinition(bit_dict, "logic")
@@ -615,7 +703,8 @@ class moddata:
                 bit_dict = sf.GetOutputSigBitsList()[bit_list_index]
                 if change_bit != False:
                     for bit_key in change_bit.keys():
-                        bit_dict[bit_key] = change_bit[bit_key]
+                        if not ( not override and bit_key in bit_dict.keys() ):
+                            bit_dict[bit_key] = change_bit[bit_key]
                 
                 # At the moment only logic input are supported
                 line_to_create += CreateBitsDefinition(bit_dict, "logic")
@@ -627,7 +716,8 @@ class moddata:
                 bit_dict = sf.GetInternSigBitsList()[bit_list_index]
                 if change_bit != False:
                     for bit_key in change_bit.keys():
-                        bit_dict[bit_key] = change_bit[bit_key]
+                        if not ( not override and bit_key in bit_dict.keys() ):
+                            bit_dict[bit_key] = change_bit[bit_key]
                 # At the moment only logic input are supported
                 line_to_create += CreateBitsDefinition(bit_dict, "logic")
                 sig_type = "INTERN"
@@ -670,7 +760,7 @@ class moddata:
             return indent_1 + "#(\n" + declaration_str + indent_1 + ")\n"
         return declaration_str
 
-    def GetDeclaration(sf, indent_level=0, change_bit_all_io_and_intern_sig = False):
+    def GetDeclaration(sf, indent_level=0, change_bit_all_io = False, no_change_bit_name_list = []):
         """ Return the declaration of the block
         """
         declaration_str = ""
@@ -683,12 +773,31 @@ class moddata:
         
         #### INPUTS AND OUTPUTS
         declaration_str += "(\n"
-        declaration_str += sf.GetPortIoFromList(sf.GetInputSigNamesList(), change_bit = change_bit_all_io_and_intern_sig)
-        declaration_str += sf.GetPortIoFromList(sf.GetOutputSigNamesList(), ending=True, change_bit = change_bit_all_io_and_intern_sig)
+        input_list = []
+        if no_change_bit_name_list != []:
+            for sig in sf.GetInputSigNamesList():
+                if not sig in no_change_bit_name_list:
+                    input_list.append(sig)
+                else:
+                    declaration_str += sf.GetPortIoFromList([sig])
+        else:
+            input_list = sf.GetInputSigNamesList()
+        declaration_str += sf.GetPortIoFromList(input_list, change_bit = change_bit_all_io)
+        
+        output_list = []
+        if no_change_bit_name_list != []:
+            for sig in sf.GetOutputSigNamesList():
+                if not sig in no_change_bit_name_list:
+                    output_list.append(sig)
+                else:
+                    declaration_str += sf.GetPortIoFromList([sig])
+        else:
+            output_list = sf.GetOutputSigNamesList()
+        declaration_str += sf.GetPortIoFromList(output_list, ending=True, change_bit = change_bit_all_io)
         declaration_str += ")\n"
 
         #### INTERNAL signals
-        declaration_str += sf.GetPortIoFromList(sf.GetInternSigNamesList(), change_bit = change_bit_all_io_and_intern_sig)
+        declaration_str += sf.GetPortIoFromList(sf.GetInternSigNamesList())
 
         return declaration_str
 
@@ -725,9 +834,9 @@ class moddata:
             instance_str +="\n"+ indent_1 + "#( \n"
             for par, par_to_conn in zip(parameter_name_list,sf.parameter_connection_list) :
                 if par==parameter_name_list[-1]:
-                    instance_str += indent_2 +" {:<20}".format(par) +"( "+" {:<20}".format(par_to_conn)+") \n"
+                    instance_str += indent_2 +" .{:<20}".format(par) +"( "+" {:<20}".format(par_to_conn)+") \n"
                 else:
-                    instance_str += indent_2 + " {:<20}".format(par) +"( "+ " {:<20}".format(par_to_conn) +"),\n"
+                    instance_str += indent_2 + " .{:<20}".format(par) +"( "+ " {:<20}".format(par_to_conn) +"),\n"
             instance_str += indent_1 +")\n" + indent_1 
         
         instance_str += " " +inst_name + "\n"
@@ -763,7 +872,7 @@ class moddata:
             end_str=" ),\n"
             for port_output_sig, to_connect_output_sig in \
                 zip(sf.GetOutputSigDiffNamesList(),sf.output_diff_port_connection_list):
-                if port_output_sig == sf.GetOutputSigNamesList()[-1]:
+                if port_output_sig == sf.GetOutputSigDiffNamesList()[-1]:
                     end_str = " )\n"
                 instance_str += indent_2+"."+"{:<23}".format(port_output_sig)\
                                       +"( "+" {:<32}".format(to_connect_output_sig) + end_str
@@ -802,12 +911,12 @@ class moddata:
 
         if signal_name in sf.GetInputSigDiffNamesList():
             sig_type=sf.INDIFF_ID
-            index = sf.GetInputSigiDiffNamesList().index(signal_name)
+            index = sf.GetInputSigDiffNamesList().index(signal_name)
             return [True, sig_type, index]
 
         if signal_name in sf.GetOutputSigDiffNamesList():
             sig_type=sf.OUTDIFF_ID
-            index = sf.GetOutputSigiDiffNamesList().index(signal_name)
+            index = sf.GetOutputSigDiffNamesList().index(signal_name)
             return [True, sig_type, index]
 
         return [False,"None",0]
@@ -816,49 +925,6 @@ class moddata:
         return (sf.modinfo["verilog_block"]!="")
 
 
-
-
-
-
-
-
-def testAnalyze(filename):
-    md=moddata(filename)
-    md.Analyze()
-    formatted=json.dumps(md.modinfo, indent=4)
-    print(formatted)
-    
-def testGetPortIo(filename):
-    md = moddata(filename)
-    md.Analyze()
-    #print(md.GetPortIoFromList(md.GetInputSigNamesList(),True,{"N1UP":2,"N1DW":0}, 1))
-    print(md.GetPortIoFromList(md.GetInputSigNamesList(),True,False, 2))
-    print(md.GetPortIoFromList(md.GetOutputSigNamesList(),True,False, 2))
-
-def testGetInstance(filename):
-    md = moddata(filename,"cv32e40p_")
-    md.Analyze()
-    print(md.GetInstance(md.GetModuleNameNoPrefix()))
-
-def testGetDeclaration(filename):
-    md = moddata(filename,"cv32e40p_")
-    md.Analyze()
-    print(md.GetDeclaration())
-    print(md.GetParamBase())
-
-def testGetSigData(filename):
-    md = moddata(filename,"cv32e40p_")
-    md.Analyze()
-    print(md.GetSigData("Ciccio"))
-
-def testSetSigAsAnotherModuleSig(filename):
-    md = moddata(filename,"cv32e40p_")
-    md.Analyze()
-    md2 = moddata()
-    md2.SetSigAsAnotherModuleSig(md, md.GetOutputSigNamesList(), md.IN_ID)
-    md2.SetSigAsAnotherModuleSig(md, md.GetInputSigNamesList(), md.OUT_ID)
-    print(md.GetDeclaration())
-    print(md2.GetDeclaration())
     
 
 

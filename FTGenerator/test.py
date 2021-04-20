@@ -7,8 +7,8 @@ import json
 DIR="/media/tesla/Storage/Data/Scrivania/AllProject/Fare/Tesi/Esecuzione_tesi/"
 
 
-main_mod_name = "cv32e40p_if_stage_no_ft.sv"
-input_dir = DIR + "/cv32e40p/rtl"
+main_mod_name = "cv32e40p_if_stage.sv"
+input_dir = DIR + "/cv32e40p_ft_tests/FTGenerator/test/arch/"
 output_dir = DIR + "/cv32e40p_ft_tests/FTGenerator/out"
 templates_dir = DIR+"cv32e40p_ft_tests/FTGenerator/templates/"
 template_fname_dict = {"ft_template" : templates_dir+"ft_template.sv"}
