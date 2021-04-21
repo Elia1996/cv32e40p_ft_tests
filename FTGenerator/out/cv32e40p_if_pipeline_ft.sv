@@ -110,6 +110,7 @@ module cv32e40p_if_pipeline_ft
                                         .illegal_c_insn_id_o    (  illegal_c_insn_id_o[0]           ),
                                         .if_valid               (  if_valid[0]                      )
                                 );
+                                // Since we don't use FT can't be detected an
                                 // error
                                 assign block_err_detected = {1'b0,1'b0,1'b0};
                         end
@@ -144,6 +145,7 @@ module cv32e40p_if_pipeline_ft
                                                                 .illegal_c_insn_id_o    (  illegal_c_insn_id_o_to_vote[i]   ),
                                                                 .if_valid               (  if_valid_to_vote[i]              )
                                                         );
+                                                end                                                
                                         end
                                         default : begin // Triplicated input
                                                 genvar i;
@@ -173,6 +175,7 @@ module cv32e40p_if_pipeline_ft
                                                                 .illegal_c_insn_id_o    (  illegal_c_insn_id_o_to_vote[i]   ),
                                                                 .if_valid               (  if_valid_to_vote[i]              )
                                                         );
+                                                end        
                                         end
                                 endcase        
 
@@ -288,6 +291,7 @@ module cv32e40p_if_pipeline_ft
                                           .err_corrected_o(err_corrected[6])
                                  );
                                  
+                                
                                 assign err_detected_o =  err_detected[0]
                                                        | err_detected[1]
                                                        | err_detected[2];

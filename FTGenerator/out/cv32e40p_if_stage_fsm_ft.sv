@@ -82,6 +82,7 @@ module cv32e40p_if_stage_fsm_ft
                                         .fetch_ready            (  fetch_ready[0]                   ),
                                         .perf_imiss_o           (  perf_imiss_o[0]                  )
                                 );
+                                // Since we don't use FT can't be detected an
                                 // error
                                 assign block_err_detected = {1'b0,1'b0,1'b0};
                         end
@@ -105,6 +106,7 @@ module cv32e40p_if_stage_fsm_ft
                                                                 .fetch_ready            (  fetch_ready_to_vote[i]           ),
                                                                 .perf_imiss_o           (  perf_imiss_o_to_vote[i]          )
                                                         );
+                                                end                                                
                                         end
                                         default : begin // Triplicated input
                                                 genvar i;
@@ -123,6 +125,7 @@ module cv32e40p_if_stage_fsm_ft
                                                                 .fetch_ready            (  fetch_ready_to_vote[i]           ),
                                                                 .perf_imiss_o           (  perf_imiss_o_to_vote[i]          )
                                                         );
+                                                end        
                                         end
                                 endcase        
 
@@ -174,6 +177,7 @@ module cv32e40p_if_stage_fsm_ft
                                           .err_corrected_o(err_corrected[2])
                                  );
                                  
+                                
                                 assign err_detected_o =  err_detected[0]
                                                        | err_detected[1]
                                                        | err_detected[2];

@@ -564,6 +564,7 @@ class travulog:
                     [command, lineno]= GetInnerCommand(data_line, lineno, "END_INSTANCE")
                     #iprint(json.dumps(block,indent=4))
                     data_elab += GetCmdInstance(block_obj,  command, instance_name ,lineno, line_indent)
+                    lineno-=1
                 else:
                     print("ERROR! INSTANCE at line %d needs block name and instance name" % lineno)
                     exit(-1)
@@ -591,6 +592,7 @@ class travulog:
                     inout = line_strip_split[2]
                     [command, lineno]= GetInnerCommand(data_line, lineno, "END_INSTANCE_FOREACH")
                     data_elab += GetInstanceForeach(block_obj,  command, inout, lineno, indent_int*" ")
+                    lineno -=1 
                 else:
                     print("ERROR! INSTANCE_FOREACH at line %d needs block name and inout parameter" % lineno)
                     exit(-1)    
@@ -632,8 +634,9 @@ class travulog:
 
             else:
                 data_elab+=line + "\n"
-
+                
             lineno+=1
+
         return data_elab
 
 filename_template="/media/tesla/Storage/Data/Scrivania/AllProject/Fare/Tesi/Esecuzione_tesi/cv32e40p_ft_tests/FTGenerator/ft_template.sv"

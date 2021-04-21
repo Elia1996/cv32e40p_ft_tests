@@ -206,16 +206,16 @@ module cv32e40p_if_stage_ft
         cv32e40p_if_pipeline_ft if_pipeline_ft
         (
                 // Input ports of if_pipeline_ft
-                .instr_decompressed     (  instr_decompressed               ),
-                .instr_compressed_int   (  instr_compressed_int             ),
-                .pc_if_o                (  pc_if_o                          ),
-                .fetch_failed           (  fetch_failed                     ),
-                .id_ready_i             (  id_ready_i                       ),
-                .halt_if_i              (  halt_if_i                        ),
-                .instr_valid            (  instr_valid                      ),
-                .clear_instr_valid_i    (  clear_instr_valid_i              ),
-                .illegal_c_insn         (  illegal_c_insn                   ),
-                .fetch_valid            (  fetch_valid                      ),
+                .instr_decompressed     (  instr_decompressed               ),-
+                .instr_compressed_int   (  instr_compressed_int             ),-
+                .pc_if_o                (  pc_if_o                          ),-
+                .fetch_failed           (  fetch_failed                     ),-
+                .id_ready_i             (  id_ready_i                       ),-
+                .halt_if_i              (  halt_if_i                        ),-
+                .instr_valid            (  instr_valid                      ),-
+                .clear_instr_valid_i    (  clear_instr_valid_i              ),-
+                .illegal_c_insn         (  illegal_c_insn                   ),-
+                .fetch_valid            (  fetch_valid                      ),-
                 .clk                    (  clk                              ),
                 .rst_n                  (  rst_n                            ),
 
