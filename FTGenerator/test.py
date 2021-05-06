@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from moddata import *
 from travulog import *
 from htravulog import *
 import json

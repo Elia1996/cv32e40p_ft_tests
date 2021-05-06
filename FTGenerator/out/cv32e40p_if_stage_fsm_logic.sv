@@ -1,4 +1,8 @@
-module cv32e40p_if_stage_fsm
+import cv32e40p_pkg::*;
+
+
+
+module cv32e40p_if_stage_fsm_logic
 (
         input  logic                    pc_set_i ,
         input  logic                    fetch_valid ,
@@ -8,8 +12,10 @@ module cv32e40p_if_stage_fsm
         output logic                    branch_req ,
         output logic                    fetch_ready ,
         output logic                    perf_imiss_o 
-)
+);
 
+
+        ////        
 
         // offset FSM state transition logic
         always_comb
@@ -29,5 +35,4 @@ module cv32e40p_if_stage_fsm
         end
 
         assign perf_imiss_o    = (~fetch_valid) | branch_req;
-
 endmodule

@@ -30,11 +30,7 @@ module cv32e40p_program_counter_definition
         logic             [4:0]  exc_vec_pc_mux ;
 
 
-        ////        
-        
-        // exception PC selection mux
-        always_comb
-                begin : EXC_PC_MUX
+        always_comb                begin : EXC_PC_MUX
                         unique case (trap_addr_mux_i)
                                 TRAP_MACHINE:  trap_base_addr = m_trap_base_addr_i;
                                 TRAP_USER:     trap_base_addr = u_trap_base_addr_i;

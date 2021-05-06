@@ -89,7 +89,7 @@ module cv32e40p_if_pipeline_ft
                                 cv32e40p_if_pipeline if_pipeline_no_ft
                                 (
                                         // Input ports of if_pipeline_no_ft
-                                        .rst_n                  (  rst_n                            ),
+                                        .rst_n                  (  rst_n[0]                         ),
                                         .instr_decompressed     (  instr_decompressed[0]            ),
                                         .instr_compressed_int   (  instr_compressed_int[0]          ),
                                         .pc_if_o                (  pc_if_o[0]                       ),
@@ -100,7 +100,7 @@ module cv32e40p_if_pipeline_ft
                                         .clear_instr_valid_i    (  clear_instr_valid_i[0]           ),
                                         .illegal_c_insn         (  illegal_c_insn[0]                ),
                                         .fetch_valid            (  fetch_valid[0]                   ),
-                                        .clk                    (  clk                              ),
+                                        .clk                    (  clk[0]                           ),
 
                                         // Output ports of if_pipeline_no_ft
                                         .instr_valid_id_o       (  instr_valid_id_o[0]              ),
@@ -124,7 +124,7 @@ module cv32e40p_if_pipeline_ft
                                                         cv32e40p_if_pipeline if_pipeline_single_input
                                                         (
                                                                 // Input ports of if_pipeline_single_input
-                                                                .rst_n                  (  rst_n                            ),
+                                                                .rst_n                  (  rst_n[0]                         ),
                                                                 .instr_decompressed     (  instr_decompressed[0]            ),
                                                                 .instr_compressed_int   (  instr_compressed_int[0]          ),
                                                                 .pc_if_o                (  pc_if_o[0]                       ),
@@ -135,7 +135,7 @@ module cv32e40p_if_pipeline_ft
                                                                 .clear_instr_valid_i    (  clear_instr_valid_i[0]           ),
                                                                 .illegal_c_insn         (  illegal_c_insn[0]                ),
                                                                 .fetch_valid            (  fetch_valid[0]                   ),
-                                                                .clk                    (  clk                              ),
+                                                                .clk                    (  clk[0]                           ),
 
                                                                 // Output ports of if_pipeline_single_input
                                                                 .instr_valid_id_o       (  instr_valid_id_o_to_vote[i]      ),
@@ -154,7 +154,7 @@ module cv32e40p_if_pipeline_ft
                                                         cv32e40p_if_pipeline if_pipeline_tiple_input
                                                         (
                                                                 // Input ports of if_pipeline_tiple_input
-                                                                .rst_n                  (  rst_n                            ),
+                                                                .rst_n                  (  rst_n[i]                         ),
                                                                 .instr_decompressed     (  instr_decompressed[i]            ),
                                                                 .instr_compressed_int   (  instr_compressed_int[i]          ),
                                                                 .pc_if_o                (  pc_if_o[i]                       ),
@@ -165,7 +165,7 @@ module cv32e40p_if_pipeline_ft
                                                                 .clear_instr_valid_i    (  clear_instr_valid_i[i]           ),
                                                                 .illegal_c_insn         (  illegal_c_insn[i]                ),
                                                                 .fetch_valid            (  fetch_valid[i]                   ),
-                                                                .clk                    (  clk                              ),
+                                                                .clk                    (  clk[i]                           ),
 
                                                                 // Output ports of if_pipeline_tiple_input
                                                                 .instr_valid_id_o       (  instr_valid_id_o_to_vote[i]      ),

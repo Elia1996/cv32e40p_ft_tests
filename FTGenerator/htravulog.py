@@ -24,8 +24,6 @@ from travulog import *
 #           necessari, crea le instanze e modifica quelle già presenti in base ai comandi travulog nascosti
 
 
-def CompressLineSpaceTabs(line):
-    return " ".join(line.strip().split()).strip()
 
 def CompressInstanceLine(line):
     line_no_space = CompressLineSpaceTabs(line)
@@ -50,6 +48,9 @@ class htravulog:
         template_filename_dict -> dictionary of template that can be used inside htravulof, the key of the 
                 dictionary is the string used in htravulog to indicate the template, the value is the absolute
                 filename of the template written in verilog with travulog
+                {"ft_template" : path/ft_template.sv , "ft_templateECC" : path/ft_templateECC1.sv}
+        template_parameters_filename_dict -> as template_filename_dict but for the parameter templates
+                {"ft_template" : path/ft_template_params.sv , "ft_templateECC" : path/ft_templateECC_params.sv}
         package_filename -> dictionary of package associate to relative template, the key is the same, if the value
                 is a empty string the package doesn't exist, otherwise are used
         """
@@ -97,6 +98,7 @@ class htravulog:
         new_block_obj = moddata("", sf.module_prefix, sf.indent)
         new_block_obj.SetVerilogBlock(cmd_dict["verilog_block"])
         new_block_obj.SetModuleName(cmd_dict["block_name"])
+        new_block_obj.SetImportList(sf.md_main_block_obj.GetImportList())
 
         #print(cmd_in_sig)
         #print(sf.md_main_block_obj.GetInputSigNamesList())
@@ -114,6 +116,108 @@ class htravulog:
         
         return new_block_obj
 
+    ###########################################################################################################
+    # CREATE_MODULE command parsing and execution
+    ###########################################################################################################
+
+    def CreateFtBlockParsing(sf, cmd ):
+        """
+
+        """
+        cmd=" ".join(cmd.split())
+        cmd_list = cmd.split(" ")
+        ###########################
+        # Controls
+        ###########################
+        # The first line should contain three word
+        if len(cmd_list)!= 3 :  # CREATE_FT_BLOCK template_name block_name
+            print("ERROR line %d, CREATE_FT_BLOCK template_name block_name" % sf.lineno)
+            exit(-1)
+        if not cmd_list[1] in sf.tv_template_obj.keys():  # Errore se il template non e presente
+            print("ERROR line %d template %s not found"%(sf.lineno,cmd_list[1]))
+            exit(-1)
+        ##########################
+        # Parsing
+        ##########################
+        block_name = cmd_list[2]
+        cmd_dict={}
+        cmd_dict["template"] = cmd_list[1]
+        cmd_dict["start_line"]=sf.lineno
+        # le linee di hidden travulog devono essere attaccate percui cerco
+        # sf.HTKEY nelle linee successive, devono infatti esserci gli ingressi e le uscite
+        sf.lineno += 1
+        line= " ".join(data_line[sf.lineno].strip().split()).strip()
+        # If this two variable are already false after cycle means that
+        # in out or both are not found in hidden travulog, this create an error
+        find_in=False
+        find_out=False
+        current_saving=""
+        
+        connection_str = sf.ConnectionParsing(data_line, lang_param)
+        # Save travulog hidden command
+        while line.split(" ")[0] == sf.HTKEY:
+            if " IN " in line:
+                current_saving="IN"
+                find_in=True
+                cmd_dict["IN"]=[]
+            elif " OUT " in line:
+                current_saving="OUT"
+                find_out=True
+                cmd_dict["OUT"]=[]
+            else:
+                if current_saving=="":
+                    break
+            cmd_split = line.replace(sf.HTKEY, "").strip().split(" ")
+            if len(cmd_split) < 1:
+                break
+            if current_saving == "IN":
+                for ingressi in cmd_split:
+                    if ingressi != "IN":
+                       cmd_dict["IN"].append(ingressi)
+            if current_saving == "OUT":
+                for ingressi in cmd_split:
+                    if ingressi != "OUT":
+                        cmd_dict["OUT"].append(ingressi)
+
+            sf.lineno +=1
+            line= " ".join(data_line[sf.lineno].strip().split()).strip()
+
+        # Verify that both input and output are given
+        if not find_in or not find_out or \
+                len(cmd_dict["IN"])<1 or \
+                len(cmd_dict["OUT"])<1:
+
+            print("ERROR, line %d, hiddent travulog needs continuos statments"
+                    ", CREATE_FT_BLOCK needs input and output signal, "
+                    "you remember that IN and OUT need a space before and after"
+                    " to be recognized" % sf.lineno)
+            exit(-1)
+
+        # Save verilog block to use in new block
+        cmd_dict["verilog_block"] = data_line[sf.lineno]
+        sf.lineno +=1
+        line= " ".join(data_line[sf.lineno].strip().split()).strip()
+        while line.split(" ")[0] != sf.HTKEY:
+            cmd_dict["verilog_block"] += data_line[sf.lineno] + "\n"
+            sf.lineno +=1
+            line= " ".join(data_line[sf.lineno].strip().split()).strip()
+
+        # Verify end key
+        if line.split(" ")[1] != "END_CREATE_FT_BLOCK":
+            print("ERROR, line %d, at the end of the verilog block"
+                    " you should place END_CREATE_FT_BLOCK command" % sf.lineno)
+            exit(-1)
+
+        # Create datafile and instance
+        cmd_dict["end_line"]=sf.lineno
+        lines_of_instances.append([cmd_dict["start_line"], sf.lineno, block_name])
+        cmd_dict["block_name"] = block_name
+        # Index of the fault tolerant signals exiting from each ft block
+        cmd_dict["ft_signal_index"] = sf.GetFtSignalIndex(block_name)
+        cmd_dict["ft_signal_no_index_list"] = ft_no_index_list
+        cmd_dict["connection_str"] = connection_str
+        
+        return cmd_dict
 
 
     def CreateFtBlock(sf, cmd_dict, indent):
@@ -155,7 +259,11 @@ class htravulog:
                                                     cmd_dict["ft_signal_index"], \
                                                     cmd_dict["ft_signal_no_index_list"]) 
         
-
+        # Create correct connections
+        md_ft_module_obj = SetObjConnection(md_ft_module_obj,
+                                            cmd_dict["connection_str"],
+                                            sf.lineno, 
+                                            HTKEY = sf.HTKEY )
         
         instance_name = md_ft_module_obj.GetModuleNameNoPrefix()
 
@@ -167,6 +275,10 @@ class htravulog:
         sf.FindAndSetInternSigDictFromInstance(md_ft_module_obj)
        
         return instance
+    
+    ###########################################################################################################
+    # INSTANCE_AND_BLOCK command parsing and execution
+    ###########################################################################################################
 
     def BlockToFT(sf,cmd_dict, indent_int):
         """ Return the ft block instance 
@@ -199,76 +311,19 @@ class htravulog:
         shutil.copyfile(source, dest)
 
         #### Set instance connection basing on saved io_list_dict and param_list_dict
-        in_connection_list = []
-        out_connection_list = []
-        param_connection_list = []
-        # We cycle in all input 
-        for sig_name in md_ft_module_obj.GetInputSigNamesList(): 
-            # If the input is already connected in the instance
-            if sig_name in cmd_dict["io_dict"].keys():
-                # We verify that the connected signal exist in the main module and  we triplicate it
-                # if is not alone
-                for sig_to_connect in sf.md_main_block_obj.GetAllSigName():
-                    if sig_to_connect in cmd_dict["io_dict"][sig_name]:
-                        if sig_to_connect == cmd_dict["io_dict"][sig_name]:
-                            in_connection_list.append(cmd_dict["io_dict"][sig_name])
-                        else:
-                            pre_suf_list = cmd_dict["io_dict"][sig_name].split(sig_to_connect)
-                            new_conn = "{ " + pre_suf_list[0] + sig_to_connect + "[0]" + pre_suf_list[1] + ", "
-                            new_conn += pre_suf_list[0] + sig_to_connect + "[1]" + pre_suf_list[1] + ", "
-                            new_conn += pre_suf_list[0] + sig_to_connect + "[2]" + pre_suf_list[1] + "} "
-                            in_connection_list.append(new_conn)
-                        break
 
-                else:
-                    print("ERROR line %d, signal %s not found in main module !"%(sf.lineno, cmd_dict["io_dict"][sig_name]))
-                    exit(-1)
-            else:
-                in_connection_list.append(sig_name)
-        
-        # We cycle in all input 
-        for sig_name in md_ft_module_obj.GetOutputSigNamesList(): 
-            # If the input is already connected in the instance
-            if sig_name in cmd_dict["io_dict"].keys():
-                # We verify that the connected signal exist in the main module and  we triplicate it
-                # if is not alone
-                for sig_to_connect in sf.md_main_block_obj.GetAllSigName():
-                    if sig_to_connect in cmd_dict["io_dict"][sig_name]:
-                        if sig_to_connect == cmd_dict["io_dict"][sig_name]:
-                            out_connection_list.append(cmd_dict["io_dict"][sig_name])
-                        else:
-                            pre_suf_list = cmd_dict["io_dict"][sig_name].split(sig_to_connect)
-                            new_conn = "{ " + pre_suf_list[0] + sig_to_connect + "[0]" + pre_suf_list[1] + ", "
-                            new_conn += pre_suf_list[0] + sig_to_connect + "[1]" + pre_suf_list[1] + ", "
-                            new_conn += pre_suf_list[0] + sig_to_connect + "[2]" + pre_suf_list[1] + "} "
-                            out_connection_list.append(new_conn)
-                        break
+        md_ft_module_obj = SetObjConnection(md_ft_module_obj,
+                                            cmd_dict["connection_str"],
+                                            sf.lineno, 
+                                            sf.md_main_block_obj, 
+                                            cmd_dict["io_dict"] , 
+                                            sf.HTKEY )
 
-                else:
-                    print("ERROR line %d, signal %s not found in main module !"%(sf.lineno, cmd_dict["io_dict"][sig_name]))
-                    exit(-1)
-            else:
-                out_connection_list.append(sig_name)
-        
-        # We cycle in all input 
-        for sig_name in md_ft_module_obj.GetParameterNamesList(): 
-            # If the input is already connected in the instance
-            if sig_name in cmd_dict["param_dict"].keys():
-                # We verify that the connected signal exist in the main module and  we triplicate it
-                # if is not alone
-                param_connection_list.append(cmd_dict["param_dict"][sig_name])
-            else:
-                param_connection_list.append(sig_name)
-        
-        md_ft_module_obj.SetInputPortConnections(in_connection_list)
-        md_ft_module_obj.SetOutputPortConnections(out_connection_list)
-        md_ft_module_obj.SetParameterConnections(param_connection_list) 
-        
-        instance_name = md_ft_module_obj.GetModuleNameNoPrefix()
-
-
+        print("IN:")
+        print(md_ft_module_obj.input_port_connection_list)
         #### Set new internal sig in the global variable
         sf.FindAndSetInternSigDictFromInstance(md_ft_module_obj)
+        instance_name = md_ft_module_obj.GetModuleNameNoPrefix()
         
         #### Create instance
         instance = md_ft_module_obj.GetInstance( instance_name, indent_int)
@@ -301,6 +356,7 @@ class htravulog:
 
     def CreateAndSaveFtBlock(sf, md_obj, template_name, block_name, ft_sig_index, ft_sig_no_index_list):
         """ Return ft module object 
+
         This function use md_obj as "BLOCK" for ft template and create a ft block,
         the block is printed in the ft_filename file and than is Analyzed to create
         the ft object that is returned.
@@ -371,6 +427,22 @@ class htravulog:
         sf.orig_param_name = sf.md_main_block_obj.GetParamBaseNoPrefix()
         return  sf.orig_param_name + "_" + GetParamBase(block_name.replace(sf.module_prefix,"")) + "_I"
 
+    def ConnectionParsing(sf, data_line, lang_param):
+        connection_str = ""
+        if "CONNECT" in data_line[sf.lineno]:
+            while not "END_CONNECT" in data_line[sf.lineno] :
+                sline = " ".join(DeleteKeySplitLine(data_line[sf.lineno], sf.HTKEY))
+                if not sf.HTKEY in data_line[sf.lineno]:
+                    print("ERROR in line %d, END_CONNECT is needed"%sf.lineno)
+                    exit(-1)
+                str1 =  sline.replace("CONNECT", "")
+                for par, val in zip(lang_param.keys(), lang_param.values()):
+                    str1 = str1.replace(par, " ".join(val)) + "\n"
+                connection_str += str1
+                sf.lineno += 1
+
+        return connection_str
+
     def ElaborateHiddenTravulog(sf):
         """
          This function elaborate travulog code hidden in a verilog or sistemverilog file
@@ -402,20 +474,33 @@ class htravulog:
         declaration_begin_line=0
         declaration_end_line=0
         # This list contain begin line, end line and name of a new block
-        lines=[]
+        lines_of_instances=[]
         ft_no_index_list = ["clk","rst_n"] 
         sf.block_cnt = 0
         sf.new_internal_sig = {}
+
+        # Creation of the new object that initially is a copy of the main moddata
+        # object 
+        sf.md_main_block_obj_new = sf.md_main_block_obj
+        sf.md_main_block_obj_new.DeleteVerilogBlock()
         
         sf.package_datafile = ""
+
+        lang_param = {"MAIN_MODULE_IN" : sf.md_main_block_obj.GetInputSigNamesList(),
+                        "MAIN_MODULE_OUT": sf.md_main_block_obj.GetOutputSigNamesList(),
+                        "MAIN_MODULE_PARAMETER": sf.md_main_block_obj.GetParameterNamesList()}
+
+        lang_obj = {"MAIN_MODULE" : sf.md_main_block_obj}
 
         # Elaboration cycle
         while sf.lineno < linemax:
             line= CompressLineSpaceTabs(data_line[sf.lineno])
             if line.split(" ")[0] == "module":
                 declaration_begin_line = sf.lineno
-            if line.split(" ")[0] == "logic":
+            if ");" in line and declaration_end_line == 0:
                 declaration_end_line = sf.lineno
+
+            # Find line indentation
             current_line_indent = GetStringIndent(data_line[sf.lineno], 8)
 
             # La stringa ////  l'indice di una riga di Travulog
@@ -425,99 +510,13 @@ class htravulog:
                 print("[Command] : " +cmd)
 
                 if "CREATE_FT_BLOCK " in cmd:
-                    cmd=" ".join(cmd.split())
-                    cmd_list = cmd.split(" ")
-                    ###########################
-                    # Controls
-                    ###########################
-                    # The first line should contain three word
-                    if len(cmd_list)!= 3 :  # CREATE_FT_BLOCK template_name block_name
-                        print("ERROR line %d, CREATE_FT_BLOCK template_name block_name" % sf.lineno)
-                        exit(-1)
-                    if not cmd_list[1] in sf.tv_template_obj.keys():  # Errore se il template non e presente
-                        print("ERROR line %d template %s not found"%sf.lineno,cmd_list[1])
-                        exit(-1)
-                    ##########################
-                    # Parsing
-                    ##########################
-                    block_name = cmd_list[2]
-                    cmd_dict[block_name]={}
-                    cmd_dict[block_name]["template"] = cmd_list[1]
-                    cmd_dict[block_name]["start_line"]=sf.lineno
-                    # le linee di hidden travulog devono essere attaccate percui cerco
-                    # sf.HTKEY nelle linee successive, devono infatti esserci gli ingressi e le uscite
-                    sf.lineno += 1
-                    line= " ".join(data_line[sf.lineno].strip().split()).strip()
-                    # If this two variable are already false after cycle means that
-                    # in out or both are not found in hidden travulog, this create an error
-                    find_in=False
-                    find_out=False
-                    current_saving=""
-                    # Save travulog hidden command
-                    while line.split(" ")[0] == sf.HTKEY:
-                        if " IN " in line:
-                            current_saving="IN"
-                            find_in=True
-                            cmd_dict[block_name]["IN"]=[]
-                        elif " OUT " in line:
-                            current_saving="OUT"
-                            find_out=True
-                            cmd_dict[block_name]["OUT"]=[]
-                        else:
-                            if current_saving=="":
-                                break
-                        cmd_split = line.replace(sf.HTKEY, "").strip().split(" ")
-                        if len(cmd_split) < 1:
-                            break
-                        if current_saving == "IN":
-                            for ingressi in cmd_split:
-                                if ingressi != "IN":
-                                   cmd_dict[block_name]["IN"].append(ingressi)
-                        if current_saving == "OUT":
-                            for ingressi in cmd_split:
-                                if ingressi != "OUT":
-                                    cmd_dict[block_name]["OUT"].append(ingressi)
-
-                        sf.lineno +=1
-                        line= " ".join(data_line[sf.lineno].strip().split()).strip()
-
-                    # Verify that both input and output are given
-                    if not find_in or not find_out or \
-                            len(cmd_dict[block_name]["IN"])<1 or \
-                            len(cmd_dict[block_name]["OUT"])<1:
-
-                        print("ERROR, line %d, hiddent travulog needs continuos statments"
-                                ", CREATE_FT_BLOCK needs input and output signal, "
-                                "you remember that IN and OUT need a space before and after"
-                                " to be recognized" % sf.lineno)
-                        exit(-1)
-
-                    # Save verilog block to use in new block
-                    cmd_dict[block_name]["verilog_block"] = data_line[sf.lineno]
-                    sf.lineno +=1
-                    line= " ".join(data_line[sf.lineno].strip().split()).strip()
-                    while line.split(" ")[0] != sf.HTKEY:
-                        cmd_dict[block_name]["verilog_block"] += data_line[sf.lineno] + "\n"
-                        sf.lineno +=1
-                        line= " ".join(data_line[sf.lineno].strip().split()).strip()
-
-                    # Verify end key
-                    if line.split(" ")[1] != "END_CREATE_FT_BLOCK":
-                        print("ERROR, line %d, at the end of the verilog block"
-                                " you should place END_CREATE_FT_BLOCK command" % sf.lineno)
-                        exit(-1)
-
-                    # Create datafile and instance
-                    cmd_dict[block_name]["end_line"]=sf.lineno
-                    lines.append([cmd_dict[block_name]["start_line"], sf.lineno, block_name])
-                    cmd_dict[block_name]["block_name"] = block_name
-                    # Index of the fault tolerant signals exiting from each ft block
-                    cmd_dict[block_name]["ft_signal_index"] = sf.GetFtSignalIndex(block_name)
-                    cmd_dict[block_name]["ft_signal_no_index_list"] = ft_no_index_list
+                    # We parse the lines and find cmd_dict:
+                    # 
+                    cmd_dict = sf.CreateFtBlockParsing( cmd )
                     
-                    ft_instance= sf.CreateFtBlock( cmd_dict[block_name], current_line_indent)
+                    ft_instance= sf.CreateFtBlock( cmd_dict, current_line_indent)
 
-                    cmd_dict[block_name]["instance"] = ft_instance
+                    sf.md_main_block_obj_new.AppendVerilogLine(ft_instance)
 
                 elif "INSTANCE_AND_BLOCK_TO_FT " in cmd:
                     """
@@ -567,10 +566,15 @@ class htravulog:
                     save_parameter = False
                     save_io = False
                     end_save = False
+                    connection_set = False
 
                     sf.lineno += 1
+                    # if connection should be modified
+                    connection_str = sf.ConnectionParsing(data_line, lang_param)
+                    # 
                     while not "END_INSTANCE_AND_BLOCK_TO_FT" in data_line[sf.lineno] and sf.lineno < linemax:
                         line= CompressLineSpaceTabs(data_line[sf.lineno])
+                        
                         if not end_save:
                             # We find the blockname with parameter
                             if "#(" in line and search_blockname:
@@ -705,8 +709,9 @@ class htravulog:
 
                     # END PARSING WHILE
                         
+                    cmd_dict[block_name]["connection_str"] = connection_str
                     cmd_dict[block_name]["end_line"]=sf.lineno
-                    lines.append([cmd_dict[block_name]["start_line"], sf.lineno, block_name])
+                    lines_of_instances.append([cmd_dict[block_name]["start_line"], sf.lineno, block_name])
                         
                     #print(json.dumps(cmd_dict[block_name],indent=4))
                     cmd_dict[block_name]["instance"] = sf.BlockToFT(cmd_dict[block_name], current_line_indent)
@@ -716,54 +721,51 @@ class htravulog:
                     # sf.HTKEY nelle linee successive, devono infatti esserci gli ingressi e le uscite
                     sf.lineno += 1
                     line= " ".join(data_line[sf.lineno].strip().split()).strip()
+                # END elif INSTANCE_AND_BLOCK_TO_FT
+                elif "DECLARATION_FOREACH " in cmd:
+                    """
+                    //// DECLARATION_FOREACH BLOCK IN_OUT
+                    ////    INOUT logic [2:0]BITINIT SIGNAME,
+                    //// END_DECLARATION_FOREACH
+                    """
+                    cmd=" ".join(cmd.split())
+                    cmd_list = DeleteKeySplitLine(cmd)
+
+                    ###########################
+                    # Controls
+                    ###########################
+                    if len(cmd_list) < 3:
+                        print("ERROR! DECLARATION_FOREACH at line %d needs"
+                            "block name and IN/OUT/IN_OUT option" % sf.lineno)
+                        print("LINE: %s" % cmd)
+                        exit(-1)
+                    module = cmd_list[1]
+                    inout = cmd_list[2]
+                    if not module in lang_obj.keys():
+                        print("ERROR DECLARATION_FOREACH line %s, only %s modules are available"%(sf.lineno, " ".join(lang_obj.values())) 
+                        exit(-1)
+                    if len(cmd_list) > 4:
+                        cmd2 = {cmd_list[3]: cmd_list[4:]}
+
+                    ###########################
+                    # Parsing
+                    ###########################  
+    
+                    [command,  sf.lineno]= GetInnerCommand(data_line, sf.lineno, "END_DECLARATION_FOREACH")
+                     += GetDeclarationForeach(block_obj, inout, \
+                            command, cmd2, lineno, line_indent*sf.indent)
 
             # END IF HTKEY in line
 
             sf.lineno+=1
 
-        # END CYCLE on file lines
+        # END CYCLE on file lines_of_instances
 
         ########################################################################
         # Create the new file of original block module_info
         ########################################################################
         # print(json.dumps(cmd_dict,indent=4))
 
-        sf.lineno = 0
-        datafile = ""
-
-        # Copy the beginning of the file before IO declaration
-        while sf.lineno < declaration_begin_line:
-            datafile += data_line[sf.lineno] + "\n"
-            sf.lineno +=1
-
-        sf.md_main_block_obj.DeleteInternSigs()
-        for sig, bits_num in zip(sf.new_internal_sig.keys(), sf.new_internal_sig.values()):
-            bits = bits_num[0]
-            num = bits_num[1]
-            if num != 0:
-                bits["N1UP"] = num
-                bits["N1DW"] = 0
-            sf.md_main_block_obj.AppendInternSig(sig, bits)
-
-        sf.new_internal_sig
-        # Add declaration and internal signals
-        datafile += "module " + sf.md_main_block_obj.GetModuleName()+ "_ft" + "\n"
-        datafile += sf.md_main_block_obj.GetDeclaration(0, {"N1UP":2 , "N1DW":0}, ft_no_index_list)
-
-        sf.lineno = declaration_end_line + 1
-        # Add all internal verilog and the instance of the new block if they exist
-        i=0
-        while sf.lineno < len(data_line):
-            if len(lines) > 0:
-                if i < len(lines) and sf.lineno == lines[i][0]:
-                    datafile += cmd_dict[lines[i][2]]["instance"]
-                    # Jump to the end of the new block declaration
-                    sf.lineno = lines[i][1]+1
-                    print("Created instance %s" % lines[i][2])
-                    i+=1
-
-            datafile += data_line[sf.lineno] + "\n"
-            sf.lineno+=1
         
         converted_htravulog = sf.output_dir + "/" + sf.htravulog_filename.replace(".sv","_ft.sv").split("/")[-1]
         fp = open( converted_htravulog, "w")

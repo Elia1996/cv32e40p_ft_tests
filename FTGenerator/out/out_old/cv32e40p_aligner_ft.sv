@@ -77,8 +77,8 @@ module cv32e40p_aligner_ft
                                 cv32e40p_aligner aligner_no_ft
                                 (
                                         // Input ports of aligner_no_ft
-                                        .clk                    (  clk                              ),
-                                        .rst_n                  (  rst_n                            ),
+                                        .clk                    (  clk[0]                           ),
+                                        .rst_n                  (  rst_n[0]                         ),
                                         .fetch_valid_i          (  fetch_valid_i[0]                 ),
                                         .if_valid_i             (  if_valid_i[0]                    ),
                                         .fetch_rdata_i          (  fetch_rdata_i[0]                 ),
@@ -106,8 +106,8 @@ module cv32e40p_aligner_ft
                                                         cv32e40p_aligner aligner_single_input
                                                         (
                                                                 // Input ports of aligner_single_input
-                                                                .clk                    (  clk                              ),
-                                                                .rst_n                  (  rst_n                            ),
+                                                                .clk                    (  clk[0]                           ),
+                                                                .rst_n                  (  rst_n[0]                         ),
                                                                 .fetch_valid_i          (  fetch_valid_i[0]                 ),
                                                                 .if_valid_i             (  if_valid_i[0]                    ),
                                                                 .fetch_rdata_i          (  fetch_rdata_i[0]                 ),
@@ -130,8 +130,8 @@ module cv32e40p_aligner_ft
                                                         cv32e40p_aligner aligner_tiple_input
                                                         (
                                                                 // Input ports of aligner_tiple_input
-                                                                .clk                    (  clk                              ),
-                                                                .rst_n                  (  rst_n                            ),
+                                                                .clk                    (  clk[i]                           ),
+                                                                .rst_n                  (  rst_n[i]                         ),
                                                                 .fetch_valid_i          (  fetch_valid_i[i]                 ),
                                                                 .if_valid_i             (  if_valid_i[i]                    ),
                                                                 .fetch_rdata_i          (  fetch_rdata_i[i]                 ),

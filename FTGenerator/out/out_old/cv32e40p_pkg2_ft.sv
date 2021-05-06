@@ -18,7 +18,7 @@ package cv32e40p_pkg2_ft;
         // cv32e40p_program_counter_definition_ft        
         //////////////////////////////////////////////////////////////////////
         parameter int PRCODE_FT = 1;
-        parameter int PRCODE_TIN = 1;
+        parameter int PRCODE_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         //  TOUT[0]-refers-to->>branch_addr_n
@@ -39,7 +39,7 @@ package cv32e40p_pkg2_ft;
         // cv32e40p_prefetch_buffer_ft        
         //////////////////////////////////////////////////////////////////////
         parameter int PRBU_FT = 1;
-        parameter int PRBU_TIN = 1;
+        parameter int PRBU_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         //  TOUT[0]-refers-to->>fetch_valid_o
@@ -63,7 +63,7 @@ package cv32e40p_pkg2_ft;
         // cv32e40p_if_stage_fsm_ft        
         //////////////////////////////////////////////////////////////////////
         parameter int IFSTFS_FT = 1;
-        parameter int IFSTFS_TIN = 1;
+        parameter int IFSTFS_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         //  TOUT[0]-refers-to->>branch_req
@@ -85,7 +85,7 @@ package cv32e40p_pkg2_ft;
         // cv32e40p_if_pipeline_ft        
         //////////////////////////////////////////////////////////////////////
         parameter int IFPI_FT = 1;
-        parameter int IFPI_TIN = 1;
+        parameter int IFPI_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         //  TOUT[0]-refers-to->>instr_valid_id_o
@@ -111,7 +111,7 @@ package cv32e40p_pkg2_ft;
         // cv32e40p_aligner_ft        
         //////////////////////////////////////////////////////////////////////
         parameter int AL_FT = 1;
-        parameter int AL_TIN = 1;
+        parameter int AL_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         //  TOUT[0]-refers-to->>aligner_ready_o
@@ -134,7 +134,7 @@ package cv32e40p_pkg2_ft;
         // cv32e40p_compressed_decoder_ft        
         //////////////////////////////////////////////////////////////////////
         parameter int CODE_FT = 1;
-        parameter int CODE_TIN = 1;
+        parameter int CODE_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         //  TOUT[0]-refers-to->>instr_o

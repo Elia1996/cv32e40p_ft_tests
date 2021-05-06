@@ -25,8 +25,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 import cv32e40p_pkg2_ft::*;
+import cv32e40p_pkg::*;
 
-module MODULE_NAME_ft
+module MODULE_NAME
 	PARAMETER_DECLARATION BLOCK
 (
 
@@ -57,8 +58,8 @@ module MODULE_NAME_ft
         // Signals that use error signal to find if there is one error on
         // each block, it is the or of previous signals
         logic [2:0] block_err_detected;
-        logic [2:0] err_detected;
-        logic [2:0] err_corrected;
+        logic [SIG_NUM-BLOCK-OUT:0] err_detected;
+        logic [SIG_NUM-BLOCK-OUT:0] err_corrected;
 
 	// variable for generate cycle
 	generate
@@ -67,8 +68,8 @@ module MODULE_NAME_ft
 				INSTANCE BLOCK BLOCK_MODNAME_no_ft
 					PARAM=PARAM
 					IF clk rst_n IN=IN
-					IN=IN [0]
-					OUT = OUT [0]
+					IN= IN[0]
+					OUT = OUT[0]
 				END_INSTANCE
 				// Since we don't use FT can't be detected an
 				// error
@@ -83,8 +84,8 @@ module MODULE_NAME_ft
 							INSTANCE BLOCK BLOCK_MODNAME_single_input 
 								PARAM=PARAM
 								IF clk rst_n IN=IN
-								IN=IN [0] 
-								OUT = OUT _to_vote[i]
+								IN=IN[0] 
+								OUT = OUT_to_vote[i]
 							END_INSTANCE
 						end						
 					end
@@ -94,8 +95,8 @@ module MODULE_NAME_ft
 							INSTANCE BLOCK BLOCK_MODNAME_tiple_input
 								PARAM=PARAM
 								IF clk rst_n IN=IN
-								IN = IN [i]
-								OUT = OUT _to_vote[i]
+								IN = IN[i]
+								OUT = OUT_to_vote[i]
 							END_INSTANCE
 						end	
 					end
@@ -119,8 +120,8 @@ module MODULE_NAME_ft
 					);
 				END_INSTANCE_FOREACH
 				
-				assign err_detected_o = OP_UNROLL 0 3 | err_detected ;
-				assign err_corrected_o = OP_UNROLL 0 3 | err_corrected ;
+				assign err_detected_o = OP_FOREACH BLOCK OUT | err_detected[INDEX] ;
+				assign err_corrected_o = OP_FOREACH BLOCK OUT | err_corrected[INDEX] ;
 				
 				assign block_err_detected[0] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[0] ; 
 				assign block_err_detected[1] = OP_FOREACH BLOCK OUT | SIGNAME_block_err[1] ; 

@@ -2,7 +2,7 @@
 	// MODULE_NAME_ft	
 	//////////////////////////////////////////////////////////////////////
 	parameter int PARAM_NAME_FT = 1;
-	parameter int PARAM_NAME_TIN = 1;
+	parameter int PARAM_NAME_TIN = 0;
         // TOUT is referred to output signal in order of definition
         //
         // OP_FOREACH BLOCK OUT // TOUT[INDEX]-refers-to->>SIGNAME
@@ -14,3 +14,7 @@
 	parameter PARAM_NAME_BREAKING_THRESHOLD = 3; 
 	parameter PARAM_NAME_COUNT_BIT = 8; 
 	parameter PARAM_NAME_INC_DEC_BIT = 2; 
+
+	parameter MAIN_MOD_ID_CURRENT_MOD_ID = MODULE_ORDER;
+
+	

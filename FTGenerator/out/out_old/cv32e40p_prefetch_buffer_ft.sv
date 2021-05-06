@@ -93,8 +93,8 @@ module cv32e40p_prefetch_buffer_ft
                                  prefetch_buffer_no_ft
                                 (
                                         // Input ports of prefetch_buffer_no_ft
-                                        .clk                    (  clk                              ),
-                                        .rst_n                  (  rst_n                            ),
+                                        .clk                    (  clk[0]                           ),
+                                        .rst_n                  (  rst_n[0]                         ),
                                         .req_i                  (  req_i[0]                         ),
                                         .branch_i               (  branch_i[0]                      ),
                                         .branch_addr_i          (  branch_addr_i[0]                 ),
@@ -132,8 +132,8 @@ module cv32e40p_prefetch_buffer_ft
                                                          prefetch_buffer_single_input
                                                         (
                                                                 // Input ports of prefetch_buffer_single_input
-                                                                .clk                    (  clk                              ),
-                                                                .rst_n                  (  rst_n                            ),
+                                                                .clk                    (  clk[0]                           ),
+                                                                .rst_n                  (  rst_n[0]                         ),
                                                                 .req_i                  (  req_i[0]                         ),
                                                                 .branch_i               (  branch_i[0]                      ),
                                                                 .branch_addr_i          (  branch_addr_i[0]                 ),
@@ -166,8 +166,8 @@ module cv32e40p_prefetch_buffer_ft
                                                          prefetch_buffer_tiple_input
                                                         (
                                                                 // Input ports of prefetch_buffer_tiple_input
-                                                                .clk                    (  clk                              ),
-                                                                .rst_n                  (  rst_n                            ),
+                                                                .clk                    (  clk[i]                           ),
+                                                                .rst_n                  (  rst_n[i]                         ),
                                                                 .req_i                  (  req_i[i]                         ),
                                                                 .branch_i               (  branch_i[i]                      ),
                                                                 .branch_addr_i          (  branch_addr_i[i]                 ),
