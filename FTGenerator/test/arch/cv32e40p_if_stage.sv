@@ -29,7 +29,7 @@
 //// IMPORT htv_pkg.tv
 
 import cv32e40p_pkg::*;
-//// ADD_LINE import cv32e40p_pkg2_ft::*;
+//// ADD_LINE import cv32e40p_pkg2::*;
 
 
 //// NEW_MODULE_NAME cv32e40p_if_stage_ft

@@ -28,7 +28,7 @@
 
 
 import cv32e40p_pkg::*;
-import cv32e40p_pkg2_ft::*;
+import cv32e40p_pkg2::*;
 
 
 

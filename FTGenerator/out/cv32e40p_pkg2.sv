@@ -12,7 +12,9 @@
 //                                                                            //
 ////////////////////////////////////////////////////////////////////////////////
 
-package cv32e40p_pkg2_ft;
+`ifndef CV32E40P_PKG2
+`define CV32E40P_PKG2
+package cv32e40p_pkg2;
  
         //////////////////////////////////////////////////////////////////////
         // cv32e40p_program_counter_definition_ft_ft        
@@ -173,3 +175,4 @@ package cv32e40p_pkg2_ft;
 
 
 endpackage
+`endif
