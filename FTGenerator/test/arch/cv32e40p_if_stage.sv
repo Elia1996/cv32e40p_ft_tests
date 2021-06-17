@@ -32,7 +32,7 @@ import cv32e40p_pkg::*;
 //// ADD_LINE import cv32e40p_pkg2::*;
 
 
-//// NEW_MODULE_NAME cv32e40p_if_stage_ft
+//// NEW_MODULE_NAME cv32e40p_if_stage
 //// NEW_MODULE_FILE OUT_DIR/cv32e40p_if_stage_ft.sv
 
 module cv32e40p_if_stage
@@ -137,6 +137,7 @@ module cv32e40p_if_stage
 
 
 	assign if_busy_o       = prefetch_busy;
+	assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 	
 	//// FOREACH MAIN_MOD_INTERN
 	////    logic [2:0]BITINIT SIGNAME_tr;
@@ -151,16 +152,20 @@ module cv32e40p_if_stage
 	//// END_FOREACH
 	
 	//// FOREACH NEW_OUT
-	//// 	logic [5:0]BITINIT SIGNAME;
+	//// 	logic [5:0]BITINIT SIGNAME_ft;
 	//// END_FOREACH
 	
 	//// FOREACH NEW_IN NOT clk rst_n
-	//// 	logic [5:0]BITINIT SIGNAME;
-	//// 	assign SIGNAME = {3'b0, 3'b0, 3'b0, 3'b0, 3'b0, 3'b0};
+	//// 	logic [5:0]BITINIT SIGNAME_ft;
+	//// 	assign SIGNAME_ft = {3'b0, 3'b0, 3'b0, 3'b0, 3'b0, 3'b0};
 	//// END_FOREACH
 	
 	//// FOREACH prefetch_busy 
 	//// 	assign if_busy_o = SIGNAME_tr[0];
+	//// END_FOREACH
+	
+	//// FOREACH fetch_failed
+	////	assign SIGNAME_tr = {1'b0, 1'b0, 1'b0};
 	//// END_FOREACH
 	
 
@@ -176,11 +181,12 @@ module cv32e40p_if_stage
 	////
 	//// CONNECT  IF clk rst_n IN = IN
 	////          IF MAIN_MOD_IN IN = {IN , IN , IN }
-	////          IF NEW_IN IN = IN[MAIN_MOD_ID_CURRENT_MOD_ID] 
+	////          IF NEW_IN IN = IN_ft[MAIN_MOD_ID_CURRENT_MOD_ID] 
 	////	      IN = IN_tr
-	////	      IF NEW_OUT OUT = OUT[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_OUT OUT = OUT_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	//// 	      OUT = OUT_tr	
 	//// END_CONNECT
+
 	////	 CREATE_MODULE cv32e40p_program_counter_definition
 	////	 OUTFILE OUT_DIR/cv32e40p_program_counter_definition.sv
 	////	
@@ -252,7 +258,6 @@ module cv32e40p_if_stage
 	//// 	END_CREATE_MODULE
 	//// END_ADD_MODULE_LAYER
 
-	assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 
 	// prefetch buffer, caches a fixed number of instructions
 	
@@ -264,9 +269,9 @@ module cv32e40p_if_stage
 	//// CONNECT  IF clk rst_n IN = IN
 	////	      IF branch_addr_n IN = {IN_tr[2] , IN_tr[1] , IN_tr[0] }
 	////	      IF MAIN_MOD_IN IN = {IN , IN , IN }
-	////          IF NEW_IN IN = IN[MAIN_MOD_ID_CURRENT_MOD_ID] 
+	////          IF NEW_IN IN = IN_ft[MAIN_MOD_ID_CURRENT_MOD_ID] 
 	////	      IN = IN_tr
-	////	      IF NEW_OUT OUT = OUT[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_OUT OUT = OUT_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	//// 	      OUT = OUT_tr	
 	//// END_CONNECT
 	cv32e40p_prefetch_buffer
@@ -313,9 +318,9 @@ module cv32e40p_if_stage
 	////
 	//// CONNECT  IF clk rst_n IN = IN
 	////	      IF MAIN_MOD_IN IN = {IN , IN , IN }
-	////          IF NEW_IN IN = IN[MAIN_MOD_ID_CURRENT_MOD_ID] 
+	////          IF NEW_IN IN = IN_ft[MAIN_MOD_ID_CURRENT_MOD_ID] 
 	////	      IN = IN_tr
-	////	      IF NEW_OUT OUT = OUT[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_OUT OUT = OUT_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	//// 	      OUT = OUT_tr	
 	//// END_CONNECT
 	
@@ -362,9 +367,9 @@ module cv32e40p_if_stage
 	////
 	//// CONNECT  IF clk rst_n IN = IN
 	////	      IF MAIN_MOD_IN IN = {IN , IN , IN }
-	////          IF NEW_IN IN = IN[MAIN_MOD_ID_CURRENT_MOD_ID] 
+	////          IF NEW_IN IN = IN_ft[MAIN_MOD_ID_CURRENT_MOD_ID] 
 	////	      IN = IN_tr
-	////	      IF NEW_OUT OUT = OUT[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_OUT OUT = OUT_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	//// 	      OUT = OUT_tr	
 	//// END_CONNECT
 	
@@ -437,12 +442,12 @@ module cv32e40p_if_stage
 	//// OUTFILE OUT_DIR/cv32e40p_aligner_ft.sv
 	////
 	//// CONNECT  IF clk rst_n IN = IN
-	////	      IF branch_addr_n IN = {IN[2] ,IN[1], IN[0]}
-	//// 	      IF NEW_IN IN = IN[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF branch_addr_n IN = {IN_tr[2] ,IN_tr[1], IN_tr[0]}
+	//// 	      IF NEW_IN IN = IN_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	////	      IF MAIN_MOD_IN IN = {IN , IN , IN }
 	////	      IF NEW_IN IN = IN_tr
 	////	      IN = IN_tr
-	////	      IF NEW_OUT OUT = OUT[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_OUT OUT = OUT_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	//// 	      OUT = OUT_tr	
 	//// END_CONNECT
 	cv32e40p_aligner aligner_i
@@ -470,10 +475,10 @@ module cv32e40p_if_stage
 	//// OUTFILE OUT_DIR/cv32e40p_compressed_decoder_ft.sv
 	////
 	//// CONNECT  IF clk rst_n IN = IN
-	////	      IF NEW_IN IN = IN[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_IN IN = IN_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	////	      IF MAIN_MOD_IN IN = {IN , IN , IN }
 	////	      IN = IN_tr
-	////	      IF NEW_OUT OUT = OUT[MAIN_MOD_ID_CURRENT_MOD_ID]
+	////	      IF NEW_OUT OUT = OUT_ft[MAIN_MOD_ID_CURRENT_MOD_ID]
 	//// 	      OUT = OUT_tr	
 	//// END_CONNECT
 	cv32e40p_compressed_decoder

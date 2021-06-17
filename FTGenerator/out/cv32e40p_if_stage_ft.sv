@@ -126,14 +126,16 @@ module cv32e40p_if_stage
         assign csr_mtvec_init_o = csr_mtvec_init_o_tr[0];
         assign perf_imiss_o = perf_imiss_o_tr[0];
 
-        logic [5:0]           [2:0]   is_broken_o;
-        logic [5:0]                   err_detected_o;
-        logic [5:0]                   err_corrected_o;
+        logic [5:0]           [2:0]   is_broken_o_ft;
+        logic [5:0]                   err_detected_o_ft;
+        logic [5:0]                   err_corrected_o_ft;
 
-        logic [5:0]           [2:0]   set_broken_i;
-        assign set_broken_i = {3'b0, 3'b0, 3'b0, 3'b0, 3'b0, 3'b0};
+        logic [5:0]           [2:0]   set_broken_i_ft;
+        assign set_broken_i_ft = {3'b0, 3'b0, 3'b0, 3'b0, 3'b0, 3'b0};
 
         assign if_busy_o = prefetch_busy_tr[0];
+
+        assign fetch_failed_tr = {1'b0, 1'b0, 1'b0};
 
 
 
@@ -164,20 +166,19 @@ module cv32e40p_if_stage
                 // Input diff ports of program_counter_definition_ft
                 .clk                    (  clk                              ),
                 .rst_n                  (  rst_n                            ),
-                .set_broken_i           (  set_broken_i[CVIFST_PRCODEFT]    ),
+                .set_broken_i           (  set_broken_i_ft[CVIFST_PRCODEFT] ),
 
                 // Output ports of program_counter_definition_ft
                 .branch_addr_n          (  branch_addr_n_tr                 ),
                 .csr_mtvec_init_o       (  csr_mtvec_init_o_tr              ),
 
                 // Output diff ports of program_counter_definition_ft
-                .is_broken_o            (  is_broken_o[CVIFST_PRCODEFT]     ),
-                .err_detected_o         (  err_detected_o[CVIFST_PRCODEFT]  ),
-                .err_corrected_o        (  err_corrected_o[CVIFST_PRCODEFT] )
+                .is_broken_o            (  is_broken_o_ft[CVIFST_PRCODEFT]  ),
+                .err_detected_o         (  err_detected_o_ft[CVIFST_PRCODEFT] ),
+                .err_corrected_o        (  err_corrected_o_ft[CVIFST_PRCODEFT] )
         );
 
 
-        assign fetch_failed    = 1'b0; // PMP is not supported in CV32E40P
 
         // prefetch buffer, caches a fixed number of instructions
         
@@ -204,7 +205,7 @@ module cv32e40p_if_stage
                 .rst_n                  (  rst_n                            ),
 
                 // Input diff ports of prefetch_buffer_ft
-                .set_broken_i           (  set_broken_i[CVIFST_PRBUFT]      ),
+                .set_broken_i           (  set_broken_i_ft[CVIFST_PRBUFT]   ),
 
                 // Output ports of prefetch_buffer_ft
                 .fetch_valid_o          (  fetch_valid_tr                   ),
@@ -214,9 +215,9 @@ module cv32e40p_if_stage
                 .busy_o                 (  prefetch_busy_tr                 ),
 
                 // Output diff ports of prefetch_buffer_ft
-                .is_broken_o            (  is_broken_o[CVIFST_PRBUFT]       ),
-                .err_detected_o         (  err_detected_o[CVIFST_PRBUFT]    ),
-                .err_corrected_o        (  err_corrected_o[CVIFST_PRBUFT]   )
+                .is_broken_o            (  is_broken_o_ft[CVIFST_PRBUFT]    ),
+                .err_detected_o         (  err_detected_o_ft[CVIFST_PRBUFT] ),
+                .err_corrected_o        (  err_corrected_o_ft[CVIFST_PRBUFT] )
         );
 
 
@@ -233,7 +234,7 @@ module cv32e40p_if_stage
                 // Input diff ports of if_stage_fsm_logic_ft
                 .clk                    (  clk                              ),
                 .rst_n                  (  rst_n                            ),
-                .set_broken_i           (  set_broken_i[CVIFST_IFSTFSLOFT]  ),
+                .set_broken_i           (  set_broken_i_ft[CVIFST_IFSTFSLOFT] ),
 
                 // Output ports of if_stage_fsm_logic_ft
                 .branch_req             (  branch_req_tr                    ),
@@ -241,9 +242,9 @@ module cv32e40p_if_stage
                 .perf_imiss_o           (  perf_imiss_o_tr                  ),
 
                 // Output diff ports of if_stage_fsm_logic_ft
-                .is_broken_o            (  is_broken_o[CVIFST_IFSTFSLOFT]   ),
-                .err_detected_o         (  err_detected_o[CVIFST_IFSTFSLOFT] ),
-                .err_corrected_o        (  err_corrected_o[CVIFST_IFSTFSLOFT] )
+                .is_broken_o            (  is_broken_o_ft[CVIFST_IFSTFSLOFT] ),
+                .err_detected_o         (  err_detected_o_ft[CVIFST_IFSTFSLOFT] ),
+                .err_corrected_o        (  err_corrected_o_ft[CVIFST_IFSTFSLOFT] )
         );
 
 
@@ -265,7 +266,7 @@ module cv32e40p_if_stage
                 .rst_n                  (  rst_n                            ),
 
                 // Input diff ports of if_pipeline_ft
-                .set_broken_i           (  set_broken_i[CVIFST_IFPIFT]      ),
+                .set_broken_i           (  set_broken_i_ft[CVIFST_IFPIFT]   ),
 
                 // Output ports of if_pipeline_ft
                 .instr_valid_id_o       (  instr_valid_id_o_tr              ),
@@ -277,9 +278,9 @@ module cv32e40p_if_stage
                 .if_valid               (  if_valid_tr                      ),
 
                 // Output diff ports of if_pipeline_ft
-                .is_broken_o            (  is_broken_o[CVIFST_IFPIFT]       ),
-                .err_detected_o         (  err_detected_o[CVIFST_IFPIFT]    ),
-                .err_corrected_o        (  err_corrected_o[CVIFST_IFPIFT]   )
+                .is_broken_o            (  is_broken_o_ft[CVIFST_IFPIFT]    ),
+                .err_detected_o         (  err_detected_o_ft[CVIFST_IFPIFT] ),
+                .err_corrected_o        (  err_corrected_o_ft[CVIFST_IFPIFT] )
         );
 
 
@@ -290,7 +291,7 @@ module cv32e40p_if_stage
                 .fetch_valid_i          (  fetch_valid_tr                   ),
                 .if_valid_i             (  if_valid_tr                      ),
                 .fetch_rdata_i          (  fetch_rdata_tr                   ),
-                .branch_addr_i          (  { {branch_addr_n[2][31:1], 1'b0}  , {branch_addr_n[1][31:1], 1'b0}  , {branch_addr_n[0][31:1], 1'b0}  } ),
+                .branch_addr_i          (  { {branch_addr_n_tr[2][31:1], 1'b0}  , {branch_addr_n_tr[1][31:1], 1'b0}  , {branch_addr_n_tr[0][31:1], 1'b0}  } ),
                 .branch_i               (  branch_req_tr                    ),
                 .hwlp_addr_i            (  { hwlp_target_i  , hwlp_target_i  , hwlp_target_i  } ),
                 .hwlp_update_pc_i       (  { hwlp_jump_i  , hwlp_jump_i  , hwlp_jump_i  } ),
@@ -298,7 +299,7 @@ module cv32e40p_if_stage
                 .rst_n                  (  rst_n                            ),
 
                 // Input diff ports of aligner_ft
-                .set_broken_i           (  set_broken_i[CVIFST_ALFT]        ),
+                .set_broken_i           (  set_broken_i_ft[CVIFST_ALFT]     ),
 
                 // Output ports of aligner_ft
                 .aligner_ready_o        (  aligner_ready_tr                 ),
@@ -307,9 +308,9 @@ module cv32e40p_if_stage
                 .pc_o                   (  pc_if_o_tr                       ),
 
                 // Output diff ports of aligner_ft
-                .is_broken_o            (  is_broken_o[CVIFST_ALFT]         ),
-                .err_detected_o         (  err_detected_o[CVIFST_ALFT]      ),
-                .err_corrected_o        (  err_corrected_o[CVIFST_ALFT]     )
+                .is_broken_o            (  is_broken_o_ft[CVIFST_ALFT]      ),
+                .err_detected_o         (  err_detected_o_ft[CVIFST_ALFT]   ),
+                .err_corrected_o        (  err_corrected_o_ft[CVIFST_ALFT]  )
         );
 
 
@@ -325,7 +326,7 @@ module cv32e40p_if_stage
                 // Input diff ports of compressed_decoder_ft
                 .clk                    (  clk                              ),
                 .rst_n                  (  rst_n                            ),
-                .set_broken_i           (  set_broken_i[CVIFST_CODEFT]      ),
+                .set_broken_i           (  set_broken_i_ft[CVIFST_CODEFT]   ),
 
                 // Output ports of compressed_decoder_ft
                 .instr_o                (  instr_decompressed_tr            ),
@@ -333,9 +334,9 @@ module cv32e40p_if_stage
                 .illegal_instr_o        (  illegal_c_insn_tr                ),
 
                 // Output diff ports of compressed_decoder_ft
-                .is_broken_o            (  is_broken_o[CVIFST_CODEFT]       ),
-                .err_detected_o         (  err_detected_o[CVIFST_CODEFT]    ),
-                .err_corrected_o        (  err_corrected_o[CVIFST_CODEFT]   )
+                .is_broken_o            (  is_broken_o_ft[CVIFST_CODEFT]    ),
+                .err_detected_o         (  err_detected_o_ft[CVIFST_CODEFT] ),
+                .err_corrected_o        (  err_corrected_o_ft[CVIFST_CODEFT] )
         );
 
 
